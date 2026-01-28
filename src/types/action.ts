@@ -4,8 +4,7 @@ export type ActionType =
   | 'unpublish'
   | 'tombstone'
   | 'ownerAdd'
-  | 'ownerRemove'
-  | 'archiveRepo';
+  | 'ownerRemove';
 
 export interface ActionResult {
   success: boolean;
@@ -53,13 +52,6 @@ export interface OwnerRemoveOptions {
   package: string;
   user: string;
   otp?: string;
-}
-
-export interface ArchiveRepoOptions {
-  package: string;
-  provider: 'github' | 'gitlab';
-  repo: string;
-  addBanner?: boolean;
 }
 
 export interface UnpublishEligibility {
@@ -165,18 +157,5 @@ export const ACTION_IMPACTS: Record<ActionType, ImpactInfo> = {
     ],
     reversible: false,
     severity: 'high',
-  },
-  archiveRepo: {
-    action: 'archiveRepo',
-    title: 'Archive Repository',
-    description: 'Set repository to read-only and add unmaintained banner',
-    consequences: [
-      'Repository becomes read-only',
-      'No new issues, PRs, or commits allowed',
-      'README will show unmaintained banner',
-      'Code remains accessible for reference',
-    ],
-    reversible: true,
-    severity: 'medium',
   },
 };

@@ -12,14 +12,12 @@ import {
   createUnpublishAction,
   createOwnerAddAction,
   createOwnerRemoveAction,
-  createArchiveRepoAction,
 } from '../plan/generator.js';
-import { parseRepoUrl } from '../providers/github.js';
 import { getNextMajor } from '../actions/semver.js';
 import { checkUnpublishEligibility } from '../policy/unpublish.js';
 import type { UnpublishEligibility } from '../types/action.js';
 
-type ActionType = 'deprecate' | 'undeprecate' | 'tombstone' | 'unpublish' | 'ownerAdd' | 'ownerRemove' | 'archiveRepo';
+type ActionType = 'deprecate' | 'undeprecate' | 'tombstone' | 'unpublish' | 'ownerAdd' | 'ownerRemove';
 
 interface ActionOption {
   type: ActionType;
@@ -59,10 +57,6 @@ export function ActionSelector({
   const [ownerUser, setOwnerUser] = useState('');
   const [unpublishEligibility, setUnpublishEligibility] = useState<UnpublishEligibility | null>(null);
 
-  const repoUrl = pkg.repository?.url ?? '';
-  const parsedRepo = parseRepoUrl(repoUrl);
-  const hasGitHubRepo = parsedRepo !== null && repoUrl.includes('github');
-
   // Check unpublish eligibility on mount
   useEffect(() => {
     if (enableUnpublish || (pkg.downloadsWeekly !== undefined && pkg.downloadsWeekly < UNPUBLISH_DOWNLOAD_THRESHOLD)) {
@@ -97,12 +91,6 @@ export function ActionSelector({
       label: 'Tombstone Release',
       available: true,
       destructive: true,
-    },
-    {
-      type: 'archiveRepo',
-      label: 'Archive GitHub Repo',
-      available: hasGitHubRepo,
-      reason: !hasGitHubRepo ? 'No GitHub repo' : undefined,
     },
     {
       type: 'ownerAdd',
@@ -179,15 +167,6 @@ export function ActionSelector({
       case 'ownerRemove':
         if (!ownerUser) return;
         action = createOwnerRemoveAction(pkg.name, ownerUser);
-        break;
-      case 'archiveRepo':
-        if (!parsedRepo) return;
-        action = createArchiveRepoAction(
-          pkg.name,
-          'github',
-          `${parsedRepo.owner}/${parsedRepo.name}`,
-          true
-        );
         break;
     }
 
@@ -320,14 +299,6 @@ export function ActionSelector({
           {selectedAction === 'ownerRemove' && pkg.owners.length > 0 && (
             <Text color="gray">Current: {pkg.owners.join(', ')}</Text>
           )}
-        </Box>
-      )}
-
-      {selectedAction === 'archiveRepo' && parsedRepo && (
-        <Box flexDirection="column" marginBottom={1}>
-          <Text>Repository: </Text>
-          <Text color="cyan">{parsedRepo.owner}/{parsedRepo.name}</Text>
-          <Text color="yellow">Requires: gh CLI authenticated</Text>
         </Box>
       )}
 

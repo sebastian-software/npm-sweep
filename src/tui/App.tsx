@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import type { DiscoveredPackage } from '../types/package.js';
 import type { Plan, PackageAction } from '../types/plan.js';
@@ -7,6 +7,7 @@ import type { RegistryClient } from '../registry/client.js';
 import { PackageList } from './PackageList.js';
 import { PackageDetails } from './PackageDetails.js';
 import { ActionSelector } from './ActionSelector.js';
+import { BulkActionSelector } from './BulkActionSelector.js';
 import { PlanSummary } from './PlanSummary.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 import { ExecutionProgress } from './ExecutionProgress.js';
@@ -19,6 +20,7 @@ type Screen =
   | { type: 'list' }
   | { type: 'details'; package: DiscoveredPackage }
   | { type: 'action'; package: DiscoveredPackage }
+  | { type: 'bulkAction'; packages: DiscoveredPackage[] }
   | { type: 'plan' }
   | { type: 'confirm' }
   | { type: 'executing' }
@@ -77,11 +79,35 @@ export function App({ client, packages, username, enableUnpublish = false }: App
   }, []);
 
   const handleAction = useCallback((pkg: DiscoveredPackage) => {
-    setScreen({ type: 'action', package: pkg });
-  }, []);
+    // If multiple packages selected, use bulk action
+    if (selectedPackages.size > 1) {
+      const selectedPkgs = packages.filter((p) => selectedPackages.has(p.name));
+      setScreen({ type: 'bulkAction', packages: selectedPkgs });
+    } else if (selectedPackages.size === 1) {
+      const selectedPkg = packages.find((p) => selectedPackages.has(p.name));
+      if (selectedPkg) {
+        setScreen({ type: 'action', package: selectedPkg });
+      }
+    } else {
+      setScreen({ type: 'action', package: pkg });
+    }
+  }, [selectedPackages, packages]);
 
   const handleAddAction = useCallback((action: PackageAction) => {
     setPlan((prev) => addActionToPlan(prev, action));
+    setSelectedPackages(new Set());
+    setScreen({ type: 'list' });
+  }, []);
+
+  const handleAddBulkActions = useCallback((actions: PackageAction[]) => {
+    setPlan((prev) => {
+      let updated = prev;
+      for (const action of actions) {
+        updated = addActionToPlan(updated, action);
+      }
+      return updated;
+    });
+    setSelectedPackages(new Set());
     setScreen({ type: 'list' });
   }, []);
 
@@ -154,6 +180,14 @@ export function App({ client, packages, username, enableUnpublish = false }: App
         />
       )}
 
+      {screen.type === 'bulkAction' && (
+        <BulkActionSelector
+          packages={screen.packages}
+          onAddActions={handleAddBulkActions}
+          onCancel={handleBack}
+        />
+      )}
+
       {screen.type === 'plan' && (
         <PlanSummary
           plan={plan}
@@ -188,7 +222,7 @@ export function App({ client, packages, username, enableUnpublish = false }: App
         <Text color="gray">
           {screen.type === 'list' && 'j/k: navigate • s: sort • o: order • a: action • p: plan • /: filter • q: quit'}
           {screen.type === 'details' && 'a: add action • Esc: back • q: quit'}
-          {screen.type === 'action' && 'Enter: confirm • Esc: cancel'}
+          {(screen.type === 'action' || screen.type === 'bulkAction') && 'Enter: confirm • Esc: cancel'}
           {screen.type === 'plan' && 'Enter: confirm & execute • Esc: back'}
           {screen.type === 'confirm' && 'Type confirmation to proceed • Esc: cancel'}
           {screen.type === 'done' && 'Enter/q: exit'}

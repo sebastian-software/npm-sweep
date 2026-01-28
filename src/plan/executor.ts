@@ -5,7 +5,6 @@ import { deprecate, undeprecate } from '../actions/deprecate.js';
 import { addOwner, removeOwner } from '../actions/ownership.js';
 import { createTombstone } from '../actions/tombstone.js';
 import { unpublish } from '../actions/unpublish.js';
-import { archiveRepo } from '../actions/archiveRepo.js';
 import { getOtp } from '../utils/otp.js';
 import { logger } from '../utils/logger.js';
 
@@ -236,21 +235,6 @@ async function executeStep(
           package: packageName,
           user: step.user,
           otp,
-        });
-        return {
-          step,
-          status: result.success ? 'success' : 'failed',
-          message: result.message,
-          error: result.error,
-        };
-      }
-
-      case 'archiveRepo': {
-        const result = await archiveRepo({
-          package: packageName,
-          provider: step.provider,
-          repo: step.repo,
-          addBanner: step.addBanner,
         });
         return {
           step,

@@ -5,7 +5,6 @@ import {
   removeActionFromPlan,
   createDeprecateAction,
   createTombstoneAction,
-  createArchiveRepoAction,
   countSteps,
   hasDestructiveActions,
 } from '../../src/plan/generator.js';
@@ -121,29 +120,6 @@ describe('plan', () => {
     });
   });
 
-  describe('createArchiveRepoAction', () => {
-    it('should create archiveRepo action', () => {
-      const action = createArchiveRepoAction('my-pkg', 'github', 'owner/repo', true);
-
-      expect(action.package).toBe('my-pkg');
-      expect(action.steps).toHaveLength(1);
-      expect(action.steps[0]?.type).toBe('archiveRepo');
-      if (action.steps[0]?.type === 'archiveRepo') {
-        expect(action.steps[0].provider).toBe('github');
-        expect(action.steps[0].repo).toBe('owner/repo');
-        expect(action.steps[0].addBanner).toBe(true);
-      }
-    });
-
-    it('should create archiveRepo action without banner', () => {
-      const action = createArchiveRepoAction('my-pkg', 'github', 'owner/repo', false);
-
-      if (action.steps[0]?.type === 'archiveRepo') {
-        expect(action.steps[0].addBanner).toBe(false);
-      }
-    });
-  });
-
   describe('validatePlanSchema', () => {
     it('should validate correct plan', () => {
       const plan: Plan = {
@@ -185,25 +161,6 @@ describe('plan', () => {
       const result = validatePlanSchema(plan);
 
       expect(result.valid).toBe(false);
-    });
-
-    it('should validate plan with archiveRepo action', () => {
-      const plan: Plan = {
-        version: 1,
-        generatedAt: new Date().toISOString(),
-        actor: 'test',
-        options: { dryRun: false, enableUnpublish: false, concurrency: 3 },
-        actions: [
-          {
-            package: 'pkg',
-            steps: [{ type: 'archiveRepo', provider: 'github', repo: 'owner/repo', addBanner: true }],
-          },
-        ],
-      };
-
-      const result = validatePlanSchema(plan);
-
-      expect(result.valid).toBe(true);
     });
   });
 });

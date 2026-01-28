@@ -33,13 +33,6 @@ export const OwnerRemoveStepSchema = z.object({
   user: z.string(),
 });
 
-export const ArchiveRepoStepSchema = z.object({
-  type: z.literal('archiveRepo'),
-  provider: z.enum(['github', 'gitlab']),
-  repo: z.string(),
-  addBanner: z.boolean().default(true),
-});
-
 export const StepSchema = z.discriminatedUnion('type', [
   DeprecateStepSchema,
   UndeprecateStepSchema,
@@ -47,7 +40,6 @@ export const StepSchema = z.discriminatedUnion('type', [
   TombstoneStepSchema,
   OwnerAddStepSchema,
   OwnerRemoveStepSchema,
-  ArchiveRepoStepSchema,
 ]);
 
 export const PackageActionSchema = z.object({
@@ -76,7 +68,6 @@ export type UnpublishStep = z.infer<typeof UnpublishStepSchema>;
 export type TombstoneStep = z.infer<typeof TombstoneStepSchema>;
 export type OwnerAddStep = z.infer<typeof OwnerAddStepSchema>;
 export type OwnerRemoveStep = z.infer<typeof OwnerRemoveStepSchema>;
-export type ArchiveRepoStep = z.infer<typeof ArchiveRepoStepSchema>;
 export type PackageAction = z.infer<typeof PackageActionSchema>;
 export type PlanOptions = z.infer<typeof PlanOptionsSchema>;
 export type Plan = z.infer<typeof PlanSchema>;

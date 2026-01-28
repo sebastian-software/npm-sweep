@@ -104,18 +104,6 @@ export function createOwnerRemoveAction(packageName: string, user: string): Pack
   };
 }
 
-export function createArchiveRepoAction(
-  packageName: string,
-  provider: 'github' | 'gitlab',
-  repo: string,
-  addBanner = true
-): PackageAction {
-  return {
-    package: packageName,
-    steps: [{ type: 'archiveRepo', provider, repo, addBanner }],
-  };
-}
-
 export function countSteps(plan: Plan): { total: number; byType: Record<string, number> } {
   const byType: Record<string, number> = {};
   let total = 0;

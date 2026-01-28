@@ -134,12 +134,6 @@ Error: [TOMBSTONE] "my-package" is no longer maintained.
 
 Add or remove maintainers. Transfer to `npm` to fully hand off a package.
 
-### Archive Repository
-
-Set the GitHub repository to read-only and add an unmaintained banner to README.
-
-Requires [GitHub CLI](https://cli.github.com/) (`gh`) to be installed and authenticated.
-
 ## Global Options
 
 ```bash
@@ -162,8 +156,7 @@ Plans are JSON files that can be reviewed before applying:
     {
       "package": "old-tool",
       "steps": [
-        { "type": "deprecate", "range": "*", "message": "Use new-tool instead" },
-        { "type": "archiveRepo", "provider": "github", "repo": "you/old-tool" }
+        { "type": "deprecate", "range": "*", "message": "Use new-tool instead" }
       ]
     }
   ]
