@@ -18,6 +18,9 @@ program
   .option('--otp <code>', 'One-time password for 2FA')
   .option('--1password-item <name>', '1Password item name for OTP')
   .option('--debug', 'Enable debug output')
+  .option('-u, --user <username>', 'npm username (defaults to authenticated user)')
+  .option('--scope <scope>', 'Filter by scope (e.g., @myorg)')
+  .option('--enable-unpublish', 'Enable unpublish action')
   .hook('preAction', (thisCommand) => {
     const opts = thisCommand.opts();
 
@@ -28,7 +31,8 @@ program
     if (opts['1passwordItem']) {
       configureOtp({ onePasswordItem: opts['1passwordItem'] as string });
     }
-  });
+  })
+  .action(tuiCommand);
 
 program
   .command('scan')
