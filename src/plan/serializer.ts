@@ -13,7 +13,7 @@ export async function loadPlan(filePath: string): Promise<Plan> {
 
   const result = validatePlanSchema(data);
   if (!result.valid || !result.plan) {
-    throw new Error(`Invalid plan file: ${result.error}`);
+    throw new Error(`Invalid plan file: ${result.error ?? 'unknown error'}`);
   }
 
   return result.plan;
@@ -28,7 +28,7 @@ export function planFromJson(json: string): Plan {
 
   const result = validatePlanSchema(data);
   if (!result.valid || !result.plan) {
-    throw new Error(`Invalid plan: ${result.error}`);
+    throw new Error(`Invalid plan: ${result.error ?? 'unknown error'}`);
   }
 
   return result.plan;

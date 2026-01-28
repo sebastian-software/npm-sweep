@@ -23,8 +23,8 @@ export async function checkUnpublishEligibility(
   checks.publishAge = {
     passed: true,
     value: isRecent
-      ? `${Math.round(hoursSincePublish)}h ago (within 72h window)`
-      : `${Math.round(hoursSincePublish / 24)} days ago`,
+      ? `${String(Math.round(hoursSincePublish))}h ago (within 72h window)`
+      : `${String(Math.round(hoursSincePublish / 24))} days ago`,
     description: isRecent
       ? 'Package was published recently (within 72h), easier unpublish rules apply'
       : 'Package is older than 72h, stricter unpublish rules apply',
@@ -37,8 +37,8 @@ export async function checkUnpublishEligibility(
       passed: isRecent || passesDownloadCheck,
       value: downloads,
       description: passesDownloadCheck
-        ? `${downloads} downloads/week (under ${UNPUBLISH_DOWNLOAD_THRESHOLD} threshold)`
-        : `${downloads} downloads/week (exceeds ${UNPUBLISH_DOWNLOAD_THRESHOLD} threshold)`,
+        ? `${String(downloads)} downloads/week (under ${String(UNPUBLISH_DOWNLOAD_THRESHOLD)} threshold)`
+        : `${String(downloads)} downloads/week (exceeds ${String(UNPUBLISH_DOWNLOAD_THRESHOLD)} threshold)`,
     };
   } else {
     checks.weeklyDownloads = {
@@ -55,10 +55,10 @@ export async function checkUnpublishEligibility(
     value: ownerCount,
     description: isSingleOwner
       ? 'Single owner (you)'
-      : `${ownerCount} owners - may need coordination`,
+      : `${String(ownerCount)} owners - may need coordination`,
   };
 
-  const hasDependents = await checkForDependents(client, pkg.name);
+  const hasDependents = checkForDependents(client, pkg.name);
   checks.hasDependents = {
     passed: hasDependents !== true, // Pass if false or unknown
     value: hasDependents,
@@ -92,10 +92,10 @@ export async function checkUnpublishEligibility(
   };
 }
 
-async function checkForDependents(
+function checkForDependents(
   _client: RegistryClient,
   _packageName: string
-): Promise<boolean | 'unknown'> {
+): boolean | 'unknown' {
   // npm doesn't have a public API for dependents
   // The search API `dependencies:name` gives false positives
   // Skip this check - npm will reject at publish time if there are real dependents

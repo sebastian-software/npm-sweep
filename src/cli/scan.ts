@@ -43,7 +43,7 @@ export async function scanCommand(
       return;
     }
 
-    spinner.text = `Found ${packageNames.length} packages, fetching details...`;
+    spinner.text = `Found ${String(packageNames.length)} packages, fetching details...`;
 
     const packages = await Promise.all(
       packageNames.map(async (name) => {
@@ -79,7 +79,7 @@ export async function scanCommand(
       filteredPackages = filteredPackages.filter((p) => !p.deprecated);
     }
 
-    spinner.succeed(`Found ${filteredPackages.length} packages`);
+    spinner.succeed(`Found ${String(filteredPackages.length)} packages`);
 
     if (options.json) {
       console.log(JSON.stringify(filteredPackages, null, 2));
@@ -119,7 +119,7 @@ export async function scanCommand(
 
     console.log('');
     console.log(
-      chalk.gray(`Total: ${filteredPackages.length} packages`)
+      chalk.gray(`Total: ${String(filteredPackages.length)} packages`)
     );
 
   } catch (error) {

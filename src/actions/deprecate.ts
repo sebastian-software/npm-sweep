@@ -48,13 +48,13 @@ export async function deprecate(
 
     await updatePackument(client, packument, otp);
 
-    logger.success(`Deprecated ${versionsUpdated} version(s) of ${packageName}`);
+    logger.success(`Deprecated ${String(versionsUpdated)} version(s) of ${packageName}`);
 
     return {
       success: true,
       action: 'deprecate',
       package: packageName,
-      message: `Deprecated ${versionsUpdated} version(s)`,
+      message: `Deprecated ${String(versionsUpdated)} version(s)`,
       details: { versionsUpdated, range, deprecationMessage: message },
     };
   } catch (error) {
@@ -114,13 +114,13 @@ export async function undeprecate(
 
     await updatePackument(client, packument, otp);
 
-    logger.success(`Removed deprecation from ${versionsUpdated} version(s) of ${packageName}`);
+    logger.success(`Removed deprecation from ${String(versionsUpdated)} version(s) of ${packageName}`);
 
     return {
       success: true,
       action: 'undeprecate',
       package: packageName,
-      message: `Removed deprecation from ${versionsUpdated} version(s)`,
+      message: `Removed deprecation from ${String(versionsUpdated)} version(s)`,
       details: { versionsUpdated, range },
     };
   } catch (error) {

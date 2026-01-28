@@ -59,7 +59,7 @@ export async function* searchAllPackages(
     params.set('size', String(SEARCH_PAGE_SIZE));
     params.set('from', String(from));
 
-    logger.debug(`Searching packages (from=${from})...`);
+    logger.debug(`Searching packages (from=${String(from)})...`);
 
     const result = await client.fetch<SearchResult>(`/-/v1/search?${params.toString()}`);
     total = result.total;

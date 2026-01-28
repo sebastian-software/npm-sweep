@@ -24,7 +24,7 @@ export async function executePlan(
   const startedAt = new Date();
   const results: PackageResult[] = [];
   const dryRun = options.dryRun ?? plan.options.dryRun;
-  const concurrency = options.concurrency ?? plan.options.concurrency ?? 3;
+  const concurrency = options.concurrency ?? plan.options.concurrency;
 
   let currentOtp = options.otp;
 
@@ -40,7 +40,8 @@ export async function executePlan(
         let failed = false;
 
         for (let i = 0; i < action.steps.length; i++) {
-          const step = action.steps[i]!;
+          const step = action.steps[i];
+          if (!step) continue;
 
           if (failed) {
             stepResults.push({
@@ -271,9 +272,9 @@ export function formatExecutionResult(result: PlanExecutionResult): string {
   const lines: string[] = [];
   const duration = result.completedAt.getTime() - result.startedAt.getTime();
 
-  lines.push(`Execution completed in ${duration}ms`);
+  lines.push(`Execution completed in ${String(duration)}ms`);
   lines.push(
-    `Summary: ${result.summary.succeeded} succeeded, ${result.summary.failed} failed`
+    `Summary: ${String(result.summary.succeeded)} succeeded, ${String(result.summary.failed)} failed`
   );
   lines.push('');
 

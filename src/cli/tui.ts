@@ -43,7 +43,7 @@ export async function tuiCommand(
       return;
     }
 
-    spinner.text = `Found ${searchResults.length} packages, fetching details...`;
+    spinner.text = `Found ${String(searchResults.length)} packages, fetching details...`;
 
     // Build a lookup for search metadata (downloads, dependents)
     const metaByName = new Map(searchResults.map(m => [m.name, m]));

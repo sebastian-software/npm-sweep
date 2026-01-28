@@ -1,4 +1,4 @@
-import { RegistryClient } from './client.js';
+import type { RegistryClient } from './client.js';
 
 interface WhoamiResponse {
   username: string;

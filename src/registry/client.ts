@@ -83,8 +83,8 @@ export class RegistryClient {
         for (const line of lines) {
           // Match: //registry.npmjs.org/:_authToken=xxx
           const authTokenMatch = line.match(/:_authToken=(.+)$/);
-          if (authTokenMatch) {
-            return authTokenMatch[1]!.trim();
+          if (authTokenMatch?.[1]) {
+            return authTokenMatch[1].trim();
           }
         }
       } catch (error) {
@@ -121,7 +121,7 @@ export class RegistryClient {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        logger.debug(`${method} ${url} (attempt ${attempt}/${MAX_RETRIES})`);
+        logger.debug(`${method} ${url} (attempt ${String(attempt)}/${String(MAX_RETRIES)})`);
 
         const response = await request(url, {
           method,
@@ -146,7 +146,7 @@ export class RegistryClient {
             ? JSON.stringify(parsed).toLowerCase()
             : String(parsed).toLowerCase();
 
-          logger.debug(`Auth error - status: ${response.statusCode}, www-authenticate: ${otpHeader}, npm-notice: ${npmNotice}, body: ${bodyStr.substring(0, 200)}`);
+          logger.debug(`Auth error - status: ${String(response.statusCode)}, www-authenticate: ${String(otpHeader)}, npm-notice: ${String(npmNotice)}, body: ${bodyStr.substring(0, 200)}`);
 
           const needsOtp =
             (typeof otpHeader === 'string' && otpHeader.toLowerCase().includes('otp')) ||
@@ -164,14 +164,14 @@ export class RegistryClient {
         if (response.statusCode === 429) {
           const retryAfter = response.headers['retry-after'];
           const delay = retryAfter ? parseInt(String(retryAfter), 10) * 1000 : RETRY_DELAY_MS * attempt;
-          logger.warn(`Rate limited, retrying in ${delay}ms...`);
+          logger.warn(`Rate limited, retrying in ${String(delay)}ms...`);
           await this.sleep(delay);
           continue;
         }
 
         if (response.statusCode >= 400) {
           // Extract error message from npm response
-          let errorMessage = `Request failed with status ${response.statusCode}`;
+          let errorMessage = `Request failed with status ${String(response.statusCode)}`;
           if (typeof parsed === 'object' && parsed !== null) {
             const npmError = parsed as Record<string, unknown>;
             if (typeof npmError.error === 'string') {
@@ -196,7 +196,7 @@ export class RegistryClient {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         if (attempt < MAX_RETRIES) {
-          logger.debug(`Request failed, retrying in ${RETRY_DELAY_MS * attempt}ms...`);
+          logger.debug(`Request failed, retrying in ${String(RETRY_DELAY_MS * attempt)}ms...`);
           await this.sleep(RETRY_DELAY_MS * attempt);
         }
       }

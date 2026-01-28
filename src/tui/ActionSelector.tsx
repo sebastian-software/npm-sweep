@@ -60,7 +60,7 @@ export function ActionSelector({
   // Check unpublish eligibility on mount
   useEffect(() => {
     if (enableUnpublish || (pkg.downloadsWeekly !== undefined && pkg.downloadsWeekly < UNPUBLISH_DOWNLOAD_THRESHOLD)) {
-      checkUnpublishEligibility(client, pkg).then(setUnpublishEligibility);
+      void checkUnpublishEligibility(client, pkg).then(setUnpublishEligibility);
     }
   }, [client, pkg, enableUnpublish]);
 
@@ -70,7 +70,7 @@ export function ActionSelector({
 
   const unpublishAvailable = showUnpublish && (unpublishEligibility?.eligible ?? false);
   const unpublishReason = !showUnpublish
-    ? `${pkg.downloadsWeekly ?? '?'} DL/wk (>${UNPUBLISH_DOWNLOAD_THRESHOLD})`
+    ? `${String(pkg.downloadsWeekly ?? '?')} DL/wk (>${String(UNPUBLISH_DOWNLOAD_THRESHOLD)})`
     : unpublishEligibility?.reason ?? 'Checking eligibility...';
 
   const actions: ActionOption[] = [
@@ -130,7 +130,7 @@ export function ActionSelector({
           setStage('configure');
         }
       }
-    } else if (stage === 'configure') {
+    } else {
       if (key.escape) {
         setStage('select');
         setSelectedAction(null);
@@ -203,7 +203,7 @@ export function ActionSelector({
                 </Box>
                 <Box>
                   {!action.available && <Text color="gray">{action.reason}</Text>}
-                  {action.available && isCursor && impact && (
+                  {action.available && isCursor && (
                     <Text color={impact.reversible ? 'green' : 'yellow'}>
                       {impact.reversible ? '↩ reversible' : '⚠ irreversible'}
                     </Text>
@@ -217,7 +217,7 @@ export function ActionSelector({
         {/* Show impact details for selected action */}
         {availableActions[cursor] && (
           <Box marginTop={1} flexDirection="column">
-            <Text color="gray">{ACTION_IMPACTS[availableActions[cursor]!.type]?.description}</Text>
+            <Text color="gray">{ACTION_IMPACTS[availableActions[cursor].type].description}</Text>
           </Box>
         )}
       </Box>
@@ -263,7 +263,7 @@ export function ActionSelector({
             <TextInput
               value={message}
               onChange={setMessage}
-              focus={selectedAction === 'tombstone' || selectedAction === 'deprecate'}
+              focus={true}
               placeholder="Deprecation message..."
             />
           </Box>

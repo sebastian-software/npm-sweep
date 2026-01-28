@@ -15,7 +15,7 @@ export async function getWeeklyDownloads(packageName: string): Promise<number | 
       if (response.status === 404) {
         return 0;
       }
-      logger.debug(`Failed to get downloads for ${packageName}: ${response.status}`);
+      logger.debug(`Failed to get downloads for ${packageName}: ${String(response.status)}`);
       return null;
     }
 
@@ -67,7 +67,8 @@ export async function getBulkDownloads(
   }
 
   for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-    const chunk = chunks[chunkIndex]!;
+    const chunk = chunks[chunkIndex];
+    if (!chunk) continue;
     const encodedNames = chunk.join(',');
 
     try {
@@ -76,7 +77,7 @@ export async function getBulkDownloads(
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.debug(`Bulk downloads request failed: ${response.status} - ${errorText}`);
+        logger.debug(`Bulk downloads request failed: ${String(response.status)} - ${errorText}`);
         // Rate limited (429) - wait and retry once
         if (response.status === 429) {
           logger.debug('Rate limited, waiting 5 seconds and retrying...');
@@ -87,7 +88,7 @@ export async function getBulkDownloads(
           if (retryResponse.ok) {
             if (chunk.length === 1) {
               const data = (await retryResponse.json()) as DownloadsResponse;
-              results.set(chunk[0]!, data.downloads);
+              results.set(chunk[0] ?? '', data.downloads);
             } else {
               const data = (await retryResponse.json()) as BulkDownloadsResponse;
               for (const name of chunk) {
@@ -113,7 +114,7 @@ export async function getBulkDownloads(
       // Multiple packages returns { packageName: { package, downloads }, ... }
       if (chunk.length === 1) {
         const data = (await response.json()) as DownloadsResponse;
-        results.set(chunk[0]!, data.downloads);
+        results.set(chunk[0] ?? '', data.downloads);
       } else {
         const data = (await response.json()) as BulkDownloadsResponse;
         for (const name of chunk) {

@@ -54,7 +54,7 @@ export async function planCommand(
 
       if (options.scope) {
         packageNames = packageNames.filter((name) =>
-          name.startsWith(options.scope + '/')
+          name.startsWith((options.scope ?? '') + '/')
         );
       }
     }
@@ -122,8 +122,8 @@ export async function planCommand(
 
     console.log('');
     console.log(chalk.gray('Plan summary:'));
-    console.log(chalk.gray(`  Packages: ${plan.actions.length}`));
-    console.log(chalk.gray(`  Actions: ${plan.actions.reduce((sum, a) => sum + a.steps.length, 0)}`));
+    console.log(chalk.gray(`  Packages: ${String(plan.actions.length)}`));
+    console.log(chalk.gray(`  Actions: ${String(plan.actions.reduce((sum, a) => sum + a.steps.length, 0))}`));
     console.log('');
     console.log(chalk.gray(`Run 'npm-sweep apply -i ${options.out}' to execute`));
 

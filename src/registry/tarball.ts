@@ -9,12 +9,12 @@ export async function downloadTarball(url: string): Promise<Buffer> {
   const response = await request(url);
 
   if (response.statusCode !== 200) {
-    throw new Error(`Failed to download tarball: ${response.statusCode}`);
+    throw new Error(`Failed to download tarball: ${String(response.statusCode)}`);
   }
 
   const chunks: Buffer[] = [];
   for await (const chunk of response.body) {
-    chunks.push(Buffer.from(chunk));
+    chunks.push(Buffer.from(chunk as Uint8Array));
   }
 
   return Buffer.concat(chunks);

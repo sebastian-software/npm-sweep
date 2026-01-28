@@ -155,8 +155,8 @@ async function gzipBuffer(data: Buffer): Promise<Buffer> {
     const gzipStream = createGzip();
     const chunks: Buffer[] = [];
 
-    gzipStream.on('data', (chunk: Buffer) => chunks.push(chunk));
-    gzipStream.on('end', () => resolve(Buffer.concat(chunks)));
+    gzipStream.on('data', (chunk: Buffer) => { chunks.push(chunk); });
+    gzipStream.on('end', () => { resolve(Buffer.concat(chunks)); });
     gzipStream.on('error', reject);
 
     gzipStream.end(data);

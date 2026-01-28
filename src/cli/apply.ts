@@ -63,8 +63,8 @@ export async function applyCommand(
     console.log(chalk.bold('Plan: ') + options.in);
     console.log(chalk.gray(`  Actor: ${plan.actor}`));
     console.log(chalk.gray(`  Generated: ${plan.generatedAt}`));
-    console.log(chalk.gray(`  Packages: ${plan.actions.length}`));
-    console.log(chalk.gray(`  Actions: ${stats.total}`));
+    console.log(chalk.gray(`  Packages: ${String(plan.actions.length)}`));
+    console.log(chalk.gray(`  Actions: ${String(stats.total)}`));
     console.log('');
 
     console.log(formatValidationResult(validation));
@@ -81,7 +81,7 @@ export async function applyCommand(
     }
 
     const destructive = hasDestructiveActions(plan);
-    const confirmCode = `APPLY ${stats.total}`;
+    const confirmCode = `APPLY ${String(stats.total)}`;
 
     if (!options.yes) {
       if (destructive) {
@@ -115,7 +115,7 @@ export async function applyCommand(
       otp,
       concurrency: options.concurrency ? parseInt(options.concurrency, 10) : undefined,
       onProgress: (pkg, step, total) => {
-        executionSpinner.text = `Executing: ${pkg} (${step}/${total})`;
+        executionSpinner.text = `Executing: ${pkg} (${String(step)}/${String(total)})`;
       },
     });
 
@@ -126,7 +126,7 @@ export async function applyCommand(
     console.log('');
 
     if (result.summary.failed > 0) {
-      console.log(chalk.yellow(`Completed with ${result.summary.failed} failure(s)`));
+      console.log(chalk.yellow(`Completed with ${String(result.summary.failed)} failure(s)`));
       process.exit(1);
     } else {
       console.log(chalk.green('All actions completed successfully'));

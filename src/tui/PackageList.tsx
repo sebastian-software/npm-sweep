@@ -101,7 +101,8 @@ export function PackageList({
     } else if (input === 's') {
       const keys: SortKey[] = ['name', 'lastPublish', 'downloads', 'dependents'];
       const currentIndex = keys.indexOf(sortKey);
-      setSortKey(keys[(currentIndex + 1) % keys.length]!);
+      const nextKey = keys[(currentIndex + 1) % keys.length];
+      if (nextKey) setSortKey(nextKey);
     } else if (input === 'o') {
       setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     }

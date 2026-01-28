@@ -87,7 +87,7 @@ export function BulkActionSelector({
           }
         }
       }
-    } else if (stage === 'configure') {
+    } else {
       if (key.escape) {
         setStage('select');
         setSelectedAction(null);
@@ -163,8 +163,8 @@ export function BulkActionSelector({
                 </Box>
                 <Box>
                   {isCursor && (
-                    <Text color={impact?.reversible ? 'green' : 'yellow'}>
-                      {impact?.reversible ? '↩ reversible' : '⚠ IRREVERSIBLE'}
+                    <Text color={impact.reversible ? 'green' : 'yellow'}>
+                      {impact.reversible ? '↩ reversible' : '⚠ IRREVERSIBLE'}
                     </Text>
                   )}
                 </Box>
@@ -175,11 +175,11 @@ export function BulkActionSelector({
 
         {actions[cursor] && (
           <Box marginTop={1}>
-            <Text color="gray">{actions[cursor]!.description}</Text>
+            <Text color="gray">{actions[cursor].description}</Text>
           </Box>
         )}
 
-        {actions[cursor]?.type === 'unpublish' && (
+        {actions[cursor].type === 'unpublish' && (
           <Box marginTop={1}>
             <Text color="red" bold>
               Warning: This will permanently delete {packages.length} packages!

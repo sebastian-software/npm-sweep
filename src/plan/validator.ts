@@ -59,8 +59,8 @@ export async function validatePlanRuntime(
   if (!plan.options.enableUnpublish) {
     for (const action of plan.actions) {
       for (let i = 0; i < action.steps.length; i++) {
-        const step = action.steps[i]!;
-        if (step.type === 'unpublish') {
+        const step = action.steps[i];
+        if (step?.type === 'unpublish') {
           errors.push({
             package: action.package,
             step: i,
@@ -78,7 +78,7 @@ export async function validatePlanRuntime(
       const discovered = packumentToDiscovered(packument);
 
       const isOwner = discovered.owners.some(
-        (o) => o.toLowerCase() === currentUser?.toLowerCase()
+        (o) => o.toLowerCase() === currentUser.toLowerCase()
       );
       if (!isOwner) {
         errors.push({
@@ -90,7 +90,8 @@ export async function validatePlanRuntime(
       }
 
       for (let i = 0; i < action.steps.length; i++) {
-        const step = action.steps[i]!;
+        const step = action.steps[i];
+        if (!step) continue;
 
         if (step.type === 'unpublish') {
           const eligibility = await checkUnpublishEligibility(client, discovered);
@@ -98,7 +99,7 @@ export async function validatePlanRuntime(
             errors.push({
               package: action.package,
               step: i,
-              message: `Unpublish not eligible: ${eligibility.reason}`,
+              message: `Unpublish not eligible: ${eligibility.reason ?? 'unknown'}`,
               code: 'UNPUBLISH_INELIGIBLE',
             });
           }
@@ -116,7 +117,7 @@ export async function validatePlanRuntime(
         }
 
         if (step.type === 'ownerRemove') {
-          if (step.user.toLowerCase() === currentUser?.toLowerCase()) {
+          if (step.user.toLowerCase() === currentUser.toLowerCase()) {
             if (discovered.owners.length === 1) {
               errors.push({
                 package: action.package,
@@ -180,7 +181,7 @@ export function formatValidationResult(result: ValidationResult): string {
     lines.push('Errors:');
     for (const error of result.errors) {
       const prefix = error.package
-        ? `  [${error.package}${error.step !== undefined ? ` step ${error.step}` : ''}]`
+        ? `  [${error.package}${error.step !== undefined ? ` step ${String(error.step)}` : ''}]`
         : '  ';
       lines.push(`${prefix} ${error.message}`);
     }
@@ -191,7 +192,7 @@ export function formatValidationResult(result: ValidationResult): string {
     lines.push('Warnings:');
     for (const warning of result.warnings) {
       const prefix = warning.package
-        ? `  [${warning.package}${warning.step !== undefined ? ` step ${warning.step}` : ''}]`
+        ? `  [${warning.package}${warning.step !== undefined ? ` step ${String(warning.step)}` : ''}]`
         : '  ';
       lines.push(`${prefix} ${warning.message}`);
     }

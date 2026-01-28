@@ -11,10 +11,10 @@ export function formatRelativeDate(date: Date): string {
 
   if (diffDays === 0) return 'today';
   if (diffDays === 1) return 'yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-  return `${Math.floor(diffDays / 365)} years ago`;
+  if (diffDays < 7) return `${String(diffDays)} days ago`;
+  if (diffDays < 30) return `${String(Math.floor(diffDays / 7))} weeks ago`;
+  if (diffDays < 365) return `${String(Math.floor(diffDays / 30))} months ago`;
+  return `${String(Math.floor(diffDays / 365))} years ago`;
 }
 
 export function formatDownloads(downloads: number): string {
@@ -78,7 +78,7 @@ export function calculateNextMajor(currentVersion: string): string {
   const match = currentVersion.match(/^(\d+)\./);
   if (match?.[1]) {
     const major = parseInt(match[1], 10);
-    return `${major + 1}.0.0`;
+    return `${String(major + 1)}.0.0`;
   }
   return '99.0.0';
 }

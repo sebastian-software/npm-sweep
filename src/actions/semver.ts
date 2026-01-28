@@ -94,5 +94,5 @@ function compareVersions(
 export function getNextMajor(currentVersion: string): string {
   const parsed = parseVersion(currentVersion);
   if (!parsed) return '99.0.0';
-  return `${parsed.major + 1}.0.0`;
+  return `${String(parsed.major + 1)}.0.0`;
 }

@@ -70,7 +70,7 @@ export function App({ client, packages: initialPackages, username, enableUnpubli
     }
 
     if (input === 'r' && screen.type === 'list') {
-      handleRefresh();
+      void handleRefresh();
     }
   });
 
@@ -120,7 +120,9 @@ export function App({ client, packages: initialPackages, username, enableUnpubli
     const results: ActionResult[] = [];
     for (let i = 0; i < actions.length; i++) {
       setScreen({ type: 'executing', actions, current: i });
-      const result = await executeAction(client, actions[i]!, enableUnpublish);
+      const action = actions[i];
+      if (!action) continue;
+      const result = await executeAction(client, action, enableUnpublish);
       results.push(result);
     }
 
@@ -196,7 +198,7 @@ export function App({ client, packages: initialPackages, username, enableUnpubli
           package={screen.package}
           client={client}
           onBack={handleBackToList}
-          onAction={() => handleAction(screen.package)}
+          onAction={() => { handleAction(screen.package); }}
         />
       )}
 
@@ -222,7 +224,7 @@ export function App({ client, packages: initialPackages, username, enableUnpubli
       {screen.type === 'confirm' && (
         <QuickConfirm
           actions={screen.actions}
-          onConfirm={() => handleExecute(screen.actions)}
+          onConfirm={() => { void handleExecute(screen.actions); }}
           onCancel={handleBackToList}
         />
       )}
@@ -230,7 +232,7 @@ export function App({ client, packages: initialPackages, username, enableUnpubli
       {screen.type === 'executing' && (
         <Box flexDirection="column">
           <Text color="yellow">
-            Executing {screen.current + 1}/{screen.actions.length}...
+            Executing {String(screen.current + 1)}/{String(screen.actions.length)}...
           </Text>
           <Text color="gray">{screen.actions[screen.current]?.package}</Text>
         </Box>
@@ -242,7 +244,7 @@ export function App({ client, packages: initialPackages, username, enableUnpubli
             <Text bold color={screen.results.every(r => r.success) ? 'green' : 'yellow'}>
               {screen.results.every(r => r.success)
                 ? '✓ All actions completed'
-                : `⚠ Completed with ${screen.results.filter(r => !r.success).length} error(s)`}
+                : `⚠ Completed with ${String(screen.results.filter(r => !r.success).length)} error(s)`}
             </Text>
           </Box>
 

@@ -26,7 +26,8 @@ export function addActionToPlan(plan: Plan, action: PackageAction): Plan {
   const existingIndex = plan.actions.findIndex((a) => a.package === action.package);
 
   if (existingIndex >= 0) {
-    const existingAction = plan.actions[existingIndex]!;
+    const existingAction = plan.actions[existingIndex];
+    if (!existingAction) return plan;
     return {
       ...plan,
       actions: [
