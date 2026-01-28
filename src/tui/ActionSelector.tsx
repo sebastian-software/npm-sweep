@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import TextInput from 'ink-text-input';
 import type { DiscoveredPackage } from '../types/package.js';
@@ -16,6 +16,8 @@ import {
 } from '../plan/generator.js';
 import { parseRepoUrl } from '../providers/github.js';
 import { getNextMajor } from '../actions/semver.js';
+import { checkUnpublishEligibility } from '../policy/unpublish.js';
+import type { UnpublishEligibility } from '../types/action.js';
 
 type ActionType = 'deprecate' | 'undeprecate' | 'tombstone' | 'unpublish' | 'ownerAdd' | 'ownerRemove' | 'archiveRepo';
 
@@ -24,6 +26,7 @@ interface ActionOption {
   label: string;
   available: boolean;
   reason?: string;
+  destructive?: boolean;
 }
 
 export interface ActionSelectorProps {
@@ -36,8 +39,11 @@ export interface ActionSelectorProps {
 
 type Stage = 'select' | 'configure';
 
+const UNPUBLISH_DOWNLOAD_THRESHOLD = 300;
+
 export function ActionSelector({
   package: pkg,
+  client,
   enableUnpublish,
   onAddAction,
   onCancel,
@@ -51,11 +57,27 @@ export function ActionSelector({
   const [range, setRange] = useState('*');
   const [targetVersion, setTargetVersion] = useState(() => getNextMajor(pkg.latestVersion));
   const [ownerUser, setOwnerUser] = useState('');
-  const [focusedInput, setFocusedInput] = useState(0);
+  const [unpublishEligibility, setUnpublishEligibility] = useState<UnpublishEligibility | null>(null);
 
   const repoUrl = pkg.repository?.url ?? '';
   const parsedRepo = parseRepoUrl(repoUrl);
   const hasGitHubRepo = parsedRepo !== null && repoUrl.includes('github');
+
+  // Check unpublish eligibility on mount
+  useEffect(() => {
+    if (enableUnpublish || (pkg.downloadsWeekly !== undefined && pkg.downloadsWeekly < UNPUBLISH_DOWNLOAD_THRESHOLD)) {
+      checkUnpublishEligibility(client, pkg).then(setUnpublishEligibility);
+    }
+  }, [client, pkg, enableUnpublish]);
+
+  // Determine if unpublish should be shown
+  const showUnpublish = enableUnpublish ||
+    (pkg.downloadsWeekly !== undefined && pkg.downloadsWeekly < UNPUBLISH_DOWNLOAD_THRESHOLD);
+
+  const unpublishAvailable = showUnpublish && (unpublishEligibility?.eligible ?? false);
+  const unpublishReason = !showUnpublish
+    ? `${pkg.downloadsWeekly ?? '?'} DL/wk (>${UNPUBLISH_DOWNLOAD_THRESHOLD})`
+    : unpublishEligibility?.reason ?? 'Checking eligibility...';
 
   const actions: ActionOption[] = [
     {
@@ -66,7 +88,7 @@ export function ActionSelector({
     },
     {
       type: 'undeprecate',
-      label: 'Undeprecate',
+      label: 'Remove Deprecation',
       available: !!pkg.deprecated,
       reason: !pkg.deprecated ? 'Not deprecated' : undefined,
     },
@@ -74,12 +96,13 @@ export function ActionSelector({
       type: 'tombstone',
       label: 'Tombstone Release',
       available: true,
+      destructive: true,
     },
     {
-      type: 'unpublish',
-      label: 'Unpublish',
-      available: enableUnpublish,
-      reason: !enableUnpublish ? 'Use --enable-unpublish flag' : undefined,
+      type: 'archiveRepo',
+      label: 'Archive GitHub Repo',
+      available: hasGitHubRepo,
+      reason: !hasGitHubRepo ? 'No GitHub repo' : undefined,
     },
     {
       type: 'ownerAdd',
@@ -90,13 +113,15 @@ export function ActionSelector({
       type: 'ownerRemove',
       label: 'Remove Owner',
       available: pkg.owners.length > 1,
-      reason: pkg.owners.length <= 1 ? 'Cannot remove last owner' : undefined,
+      reason: pkg.owners.length <= 1 ? 'Last owner' : undefined,
+      destructive: true,
     },
     {
-      type: 'archiveRepo',
-      label: 'Archive Repository',
-      available: hasGitHubRepo,
-      reason: !hasGitHubRepo ? 'No GitHub repository linked' : undefined,
+      type: 'unpublish',
+      label: 'Unpublish',
+      available: unpublishAvailable,
+      reason: unpublishAvailable ? undefined : unpublishReason,
+      destructive: true,
     },
   ];
 
@@ -122,7 +147,7 @@ export function ActionSelector({
         setStage('select');
         setSelectedAction(null);
       } else if (key.tab) {
-        setFocusedInput((prev) => prev + 1);
+        // cycle focus - not needed for simple forms
       } else if (key.return && !key.shift) {
         handleConfirm();
       }
@@ -172,35 +197,50 @@ export function ActionSelector({
   if (stage === 'select') {
     return (
       <Box flexDirection="column">
-        <Text bold>Select action for {pkg.name}</Text>
-        <Box marginY={1} />
+        <Box marginBottom={1}>
+          <Text bold color="cyan">{pkg.name}</Text>
+          <Text color="gray"> — Select action</Text>
+        </Box>
 
-        {actions.map((action, index) => {
-          const actualIndex = availableActions.indexOf(action);
-          const isCursor = actualIndex === cursor && action.available;
-          const impact = ACTION_IMPACTS[action.type];
+        <Box flexDirection="column">
+          {actions.map((action) => {
+            const actualIndex = availableActions.indexOf(action);
+            const isCursor = actualIndex === cursor && action.available;
+            const impact = ACTION_IMPACTS[action.type];
 
-          return (
-            <Box key={action.type} flexDirection="column" marginBottom={1}>
-              <Text
-                backgroundColor={isCursor ? 'blue' : undefined}
-                color={!action.available ? 'gray' : isCursor ? 'white' : undefined}
-                dimColor={!action.available}
-              >
-                {isCursor ? '>' : ' '} {action.label}
-                {!action.available && <Text color="gray"> ({action.reason})</Text>}
-              </Text>
-              {isCursor && impact && (
-                <Box marginLeft={2} flexDirection="column">
-                  <Text color="gray">{impact.description}</Text>
-                  <Text color={impact.reversible ? 'green' : 'red'}>
-                    {impact.reversible ? 'Reversible' : 'IRREVERSIBLE'}
+            return (
+              <Box key={action.type}>
+                <Box width={2}>
+                  <Text color={isCursor ? 'cyan' : 'gray'}>{isCursor ? '›' : ' '}</Text>
+                </Box>
+                <Box width={22}>
+                  <Text
+                    color={!action.available ? 'gray' : action.destructive ? 'red' : isCursor ? 'white' : undefined}
+                    dimColor={!action.available}
+                    bold={isCursor}
+                  >
+                    {action.label}
                   </Text>
                 </Box>
-              )}
-            </Box>
-          );
-        })}
+                <Box>
+                  {!action.available && <Text color="gray">{action.reason}</Text>}
+                  {action.available && isCursor && impact && (
+                    <Text color={impact.reversible ? 'green' : 'yellow'}>
+                      {impact.reversible ? '↩ reversible' : '⚠ irreversible'}
+                    </Text>
+                  )}
+                </Box>
+              </Box>
+            );
+          })}
+        </Box>
+
+        {/* Show impact details for selected action */}
+        {availableActions[cursor] && (
+          <Box marginTop={1} flexDirection="column">
+            <Text color="gray">{ACTION_IMPACTS[availableActions[cursor]!.type]?.description}</Text>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -209,27 +249,28 @@ export function ActionSelector({
 
   return (
     <Box flexDirection="column">
-      <Text bold>Configure: {selectedAction}</Text>
+      <Box marginBottom={1}>
+        <Text bold color="cyan">{pkg.name}</Text>
+        <Text color="gray"> — </Text>
+        <Text bold>{impact?.title ?? selectedAction}</Text>
+      </Box>
 
       {impact && (
-        <Box marginY={1} borderStyle="single" borderColor={impact.reversible ? 'green' : 'red'} paddingX={1}>
-          <Box flexDirection="column">
-            <Text>{impact.description}</Text>
-            {impact.consequences.map((c, i) => (
-              <Text key={i} color="gray">• {c}</Text>
-            ))}
-          </Box>
+        <Box marginBottom={1} flexDirection="column">
+          {impact.consequences.slice(0, 3).map((c, i) => (
+            <Text key={i} color="gray">• {c}</Text>
+          ))}
         </Box>
       )}
 
       {(selectedAction === 'deprecate' || selectedAction === 'undeprecate') && (
-        <Box flexDirection="column" marginY={1}>
-          <Text>Version range:</Text>
-          <Box>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text>Range: </Text>
+          <Box borderStyle="single" borderColor="gray" paddingX={1}>
             <TextInput
               value={range}
               onChange={setRange}
-              focus={focusedInput % 2 === 0}
+              focus={true}
               placeholder="* (all versions)"
             />
           </Box>
@@ -237,13 +278,13 @@ export function ActionSelector({
       )}
 
       {(selectedAction === 'deprecate' || selectedAction === 'tombstone') && (
-        <Box flexDirection="column" marginY={1}>
-          <Text>Message:</Text>
-          <Box>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text>Message: </Text>
+          <Box borderStyle="single" borderColor="gray" paddingX={1}>
             <TextInput
               value={message}
               onChange={setMessage}
-              focus={focusedInput % 2 === 1}
+              focus={selectedAction === 'tombstone' || selectedAction === 'deprecate'}
               placeholder="Deprecation message..."
             />
           </Box>
@@ -251,58 +292,63 @@ export function ActionSelector({
       )}
 
       {selectedAction === 'tombstone' && (
-        <Box flexDirection="column" marginY={1}>
-          <Text>Target version:</Text>
-          <Box>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text>Version: </Text>
+          <Box borderStyle="single" borderColor="gray" paddingX={1}>
             <TextInput
               value={targetVersion}
               onChange={setTargetVersion}
-              focus={focusedInput % 2 === 0}
+              focus={false}
               placeholder={getNextMajor(pkg.latestVersion)}
             />
           </Box>
+          <Text color="gray">Current: {pkg.latestVersion} → New: {targetVersion}</Text>
         </Box>
       )}
 
       {(selectedAction === 'ownerAdd' || selectedAction === 'ownerRemove') && (
-        <Box flexDirection="column" marginY={1}>
-          <Text>Username:</Text>
-          <Box>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text>npm username: </Text>
+          <Box borderStyle="single" borderColor="gray" paddingX={1}>
             <TextInput
               value={ownerUser}
               onChange={setOwnerUser}
               focus={true}
-              placeholder="npm username..."
+              placeholder="username"
             />
           </Box>
-          {selectedAction === 'ownerRemove' && (
-            <Box marginTop={1}>
-              <Text color="gray">Current owners: {pkg.owners.join(', ')}</Text>
-            </Box>
+          {selectedAction === 'ownerRemove' && pkg.owners.length > 0 && (
+            <Text color="gray">Current: {pkg.owners.join(', ')}</Text>
           )}
         </Box>
       )}
 
       {selectedAction === 'archiveRepo' && parsedRepo && (
-        <Box flexDirection="column" marginY={1}>
-          <Text>Repository: <Text color="cyan">{parsedRepo.owner}/{parsedRepo.name}</Text></Text>
-          <Box marginTop={1}>
-            <Text color="gray">This will:</Text>
-          </Box>
-          <Text color="gray">• Add an unmaintained banner to README.md</Text>
-          <Text color="gray">• Set the repository to read-only (archived)</Text>
-          <Box marginTop={1}>
-            <Text color="yellow">Requires: GitHub CLI (gh) authenticated</Text>
-          </Box>
+        <Box flexDirection="column" marginBottom={1}>
+          <Text>Repository: </Text>
+          <Text color="cyan">{parsedRepo.owner}/{parsedRepo.name}</Text>
+          <Text color="yellow">Requires: gh CLI authenticated</Text>
+        </Box>
+      )}
+
+      {selectedAction === 'unpublish' && (
+        <Box flexDirection="column" marginBottom={1}>
+          <Text color="red" bold>This will permanently remove the package!</Text>
+          {unpublishEligibility && (
+            <Box flexDirection="column" marginTop={1}>
+              <Text color="gray">Eligibility checks:</Text>
+              {Object.entries(unpublishEligibility.checks).map(([key, check]) => (
+                <Text key={key} color={check.passed ? 'green' : 'red'}>
+                  {check.passed ? '✓' : '✗'} {check.description}
+                </Text>
+              ))}
+            </Box>
+          )}
         </Box>
       )}
 
       <Box marginTop={1}>
-        <Text color="gray">Press </Text>
-        <Text color="cyan">Enter</Text>
-        <Text color="gray"> to confirm, </Text>
-        <Text color="cyan">Esc</Text>
-        <Text color="gray"> to go back</Text>
+        <Text color="gray">[Enter] Confirm  [Esc] Back</Text>
       </Box>
     </Box>
   );
