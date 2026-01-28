@@ -14,7 +14,7 @@ export interface PackageListProps {
   hasPlan: boolean;
 }
 
-type SortKey = 'name' | 'lastPublish' | 'downloads';
+type SortKey = 'name' | 'lastPublish' | 'downloads' | 'dependents';
 type SortOrder = 'asc' | 'desc';
 
 export function PackageList({
@@ -52,6 +52,9 @@ export function PackageList({
           break;
         case 'downloads':
           cmp = (a.downloadsWeekly ?? 0) - (b.downloadsWeekly ?? 0);
+          break;
+        case 'dependents':
+          cmp = (a.dependentsCount ?? 0) - (b.dependentsCount ?? 0);
           break;
       }
       return sortOrder === 'asc' ? cmp : -cmp;
@@ -96,7 +99,7 @@ export function PackageList({
     } else if (input === '/') {
       setShowFilter(true);
     } else if (input === 's') {
-      const keys: SortKey[] = ['name', 'lastPublish', 'downloads'];
+      const keys: SortKey[] = ['name', 'lastPublish', 'downloads', 'dependents'];
       const currentIndex = keys.indexOf(sortKey);
       setSortKey(keys[(currentIndex + 1) % keys.length]!);
     } else if (input === 'o') {
@@ -132,6 +135,7 @@ export function PackageList({
           <Box width={36}><Text color="gray">NAME</Text></Box>
           <Box width={15}><Text color="gray">LAST PUBLISH</Text></Box>
           <Box width={10}><Text color="gray">DL/WK</Text></Box>
+          <Box width={8}><Text color="gray">DEPS</Text></Box>
           <Box width={12}><Text color="gray">STATUS</Text></Box>
         </Box>
 
@@ -166,6 +170,11 @@ export function PackageList({
               <Box width={10}>
                 <Text color={isCursor ? 'white' : 'gray'}>
                   {pkg.downloadsWeekly !== undefined ? formatDownloads(pkg.downloadsWeekly) : '-'}
+                </Text>
+              </Box>
+              <Box width={8}>
+                <Text color={isCursor ? 'white' : (pkg.dependentsCount ?? 0) > 0 ? 'yellow' : 'gray'}>
+                  {pkg.dependentsCount !== undefined ? String(pkg.dependentsCount) : '-'}
                 </Text>
               </Box>
               <Box width={12}>

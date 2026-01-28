@@ -1,30 +1,27 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import type { DiscoveredPackage } from '../types/package.js';
-import type { Plan, PackageAction } from '../types/plan.js';
-import type { PlanExecutionResult } from '../types/plan.js';
+import type { PackageAction } from '../types/plan.js';
+import type { ActionResult } from '../types/action.js';
 import type { RegistryClient } from '../registry/client.js';
 import { PackageList } from './PackageList.js';
 import { PackageDetails } from './PackageDetails.js';
 import { ActionSelector } from './ActionSelector.js';
 import { BulkActionSelector } from './BulkActionSelector.js';
-import { PlanSummary } from './PlanSummary.js';
-import { ConfirmDialog } from './ConfirmDialog.js';
-import { ExecutionProgress } from './ExecutionProgress.js';
-import { ExecutionResult } from './ExecutionResult.js';
-import { createPlan, addActionToPlan } from '../plan/generator.js';
-import { executePlan } from '../plan/executor.js';
+import { QuickConfirm } from './QuickConfirm.js';
+import { executeAction } from '../plan/executor.js';
+import { findPackagesWithMetadata } from '../registry/search.js';
+import { getPackument, packumentToDiscovered } from '../registry/packument.js';
 
 type Screen =
-  | { type: 'loading' }
   | { type: 'list' }
+  | { type: 'refreshing' }
   | { type: 'details'; package: DiscoveredPackage }
   | { type: 'action'; package: DiscoveredPackage }
   | { type: 'bulkAction'; packages: DiscoveredPackage[] }
-  | { type: 'plan' }
-  | { type: 'confirm' }
-  | { type: 'executing' }
-  | { type: 'done'; result: PlanExecutionResult };
+  | { type: 'confirm'; actions: PackageAction[] }
+  | { type: 'executing'; actions: PackageAction[]; current: number }
+  | { type: 'done'; results: ActionResult[] };
 
 export interface AppProps {
   client: RegistryClient;
@@ -33,32 +30,47 @@ export interface AppProps {
   enableUnpublish?: boolean;
 }
 
-export function App({ client, packages, username, enableUnpublish = false }: AppProps) {
+export function App({ client, packages: initialPackages, username, enableUnpublish = false }: AppProps) {
   const { exit } = useApp();
   const [screen, setScreen] = useState<Screen>({ type: 'list' });
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
-  const [plan, setPlan] = useState<Plan>(() =>
-    createPlan([], { actor: username, options: { enableUnpublish } })
-  );
-  const [executionProgress, setExecutionProgress] = useState<{
-    current: string;
-    step: number;
-    total: number;
-  } | null>(null);
+  const [packages, setPackages] = useState(initialPackages);
 
   useInput((input, key) => {
     if (key.escape) {
-      if (screen.type === 'details' || screen.type === 'action') {
+      if (screen.type === 'details' || screen.type === 'action' || screen.type === 'bulkAction') {
         setScreen({ type: 'list' });
-      } else if (screen.type === 'plan' || screen.type === 'confirm') {
+      } else if (screen.type === 'confirm') {
         setScreen({ type: 'list' });
       } else if (screen.type === 'list') {
         exit();
       }
     }
 
-    if (input === 'q' && screen.type !== 'confirm') {
+    if (screen.type === 'done') {
+      if (key.return) {
+        // Remove successfully unpublished packages from the list
+        const unpublishedPackages = new Set(
+          screen.results
+            .filter(r => r.success && r.action === 'unpublish')
+            .map(r => r.package)
+        );
+        if (unpublishedPackages.size > 0) {
+          setPackages(prev => prev.filter(p => !unpublishedPackages.has(p.name)));
+        }
+        setScreen({ type: 'list' });
+      } else if (input === 'q') {
+        exit();
+      }
+      return;
+    }
+
+    if (input === 'q' && screen.type !== 'confirm' && screen.type !== 'executing') {
       exit();
+    }
+
+    if (input === 'r' && screen.type === 'list') {
+      handleRefresh();
     }
   });
 
@@ -79,7 +91,6 @@ export function App({ client, packages, username, enableUnpublish = false }: App
   }, []);
 
   const handleAction = useCallback((pkg: DiscoveredPackage) => {
-    // If multiple packages selected, use bulk action
     if (selectedPackages.size > 1) {
       const selectedPkgs = packages.filter((p) => selectedPackages.has(p.name));
       setScreen({ type: 'bulkAction', packages: selectedPkgs });
@@ -93,47 +104,63 @@ export function App({ client, packages, username, enableUnpublish = false }: App
     }
   }, [selectedPackages, packages]);
 
-  const handleAddAction = useCallback((action: PackageAction) => {
-    setPlan((prev) => addActionToPlan(prev, action));
+  const handleActionSelected = useCallback((action: PackageAction) => {
     setSelectedPackages(new Set());
+    setScreen({ type: 'confirm', actions: [action] });
+  }, []);
+
+  const handleBulkActionsSelected = useCallback((actions: PackageAction[]) => {
+    setSelectedPackages(new Set());
+    setScreen({ type: 'confirm', actions });
+  }, []);
+
+  const handleExecute = useCallback(async (actions: PackageAction[]) => {
+    setScreen({ type: 'executing', actions, current: 0 });
+
+    const results: ActionResult[] = [];
+    for (let i = 0; i < actions.length; i++) {
+      setScreen({ type: 'executing', actions, current: i });
+      const result = await executeAction(client, actions[i]!, enableUnpublish);
+      results.push(result);
+    }
+
+    setScreen({ type: 'done', results });
+  }, [client, enableUnpublish]);
+
+  const handleBackToList = useCallback(() => {
     setScreen({ type: 'list' });
   }, []);
 
-  const handleAddBulkActions = useCallback((actions: PackageAction[]) => {
-    setPlan((prev) => {
-      let updated = prev;
-      for (const action of actions) {
-        updated = addActionToPlan(updated, action);
+  const handleRefresh = useCallback(async () => {
+    setScreen({ type: 'refreshing' });
+    try {
+      const searchResults = await findPackagesWithMetadata(client, username);
+      const metaByName = new Map(searchResults.map(m => [m.name, m]));
+      const fetchedPackages = await Promise.all(
+        searchResults.map(async (meta) => {
+          try {
+            const packument = await getPackument(client, meta.name);
+            return packumentToDiscovered(packument);
+          } catch {
+            return null;
+          }
+        })
+      );
+      const validPackages = fetchedPackages.filter((p): p is DiscoveredPackage => p !== null);
+      for (const pkg of validPackages) {
+        const meta = metaByName.get(pkg.name);
+        if (meta) {
+          pkg.downloadsWeekly = meta.downloadsWeekly;
+          pkg.dependentsCount = meta.dependents;
+        }
       }
-      return updated;
-    });
-    setSelectedPackages(new Set());
+      setPackages(validPackages);
+      setSelectedPackages(new Set());
+    } catch {
+      // Silently fail, keep existing list
+    }
     setScreen({ type: 'list' });
-  }, []);
-
-  const handleViewPlan = useCallback(() => {
-    setScreen({ type: 'plan' });
-  }, []);
-
-  const handleConfirm = useCallback(() => {
-    setScreen({ type: 'confirm' });
-  }, []);
-
-  const handleExecute = useCallback(async () => {
-    setScreen({ type: 'executing' });
-
-    const result = await executePlan(client, plan, {
-      onProgress: (current, step, total) => {
-        setExecutionProgress({ current, step, total });
-      },
-    });
-
-    setScreen({ type: 'done', result });
-  }, [client, plan]);
-
-  const handleBack = useCallback(() => {
-    setScreen({ type: 'list' });
-  }, []);
+  }, [client, username]);
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -143,21 +170,24 @@ export function App({ client, packages, username, enableUnpublish = false }: App
         </Text>
         <Text color="gray"> — Managing packages for </Text>
         <Text color="yellow">{username}</Text>
-        {plan.actions.length > 0 && (
-          <Text color="magenta"> [{plan.actions.length} actions planned]</Text>
-        )}
       </Box>
+
+      {screen.type === 'refreshing' && (
+        <Box>
+          <Text color="cyan">↻ Refreshing package list...</Text>
+        </Box>
+      )}
 
       {screen.type === 'list' && (
         <PackageList
           packages={packages}
           selectedPackages={selectedPackages}
-          plannedPackages={new Set(plan.actions.map((a) => a.package))}
+          plannedPackages={new Set()}
           onSelect={handleSelect}
           onToggle={handleToggle}
           onAction={handleAction}
-          onViewPlan={handleViewPlan}
-          hasPlan={plan.actions.length > 0}
+          onViewPlan={() => {}}
+          hasPlan={false}
         />
       )}
 
@@ -165,7 +195,7 @@ export function App({ client, packages, username, enableUnpublish = false }: App
         <PackageDetails
           package={screen.package}
           client={client}
-          onBack={handleBack}
+          onBack={handleBackToList}
           onAction={() => handleAction(screen.package)}
         />
       )}
@@ -175,8 +205,8 @@ export function App({ client, packages, username, enableUnpublish = false }: App
           package={screen.package}
           client={client}
           enableUnpublish={enableUnpublish}
-          onAddAction={handleAddAction}
-          onCancel={handleBack}
+          onAddAction={handleActionSelected}
+          onCancel={handleBackToList}
         />
       )}
 
@@ -184,49 +214,59 @@ export function App({ client, packages, username, enableUnpublish = false }: App
         <BulkActionSelector
           packages={screen.packages}
           enableUnpublish={enableUnpublish}
-          onAddActions={handleAddBulkActions}
-          onCancel={handleBack}
-        />
-      )}
-
-      {screen.type === 'plan' && (
-        <PlanSummary
-          plan={plan}
-          onConfirm={handleConfirm}
-          onBack={handleBack}
+          onAddActions={handleBulkActionsSelected}
+          onCancel={handleBackToList}
         />
       )}
 
       {screen.type === 'confirm' && (
-        <ConfirmDialog
-          plan={plan}
-          onConfirm={handleExecute}
-          onCancel={handleBack}
+        <QuickConfirm
+          actions={screen.actions}
+          onConfirm={() => handleExecute(screen.actions)}
+          onCancel={handleBackToList}
         />
       )}
 
       {screen.type === 'executing' && (
-        <ExecutionProgress
-          plan={plan}
-          progress={executionProgress}
-        />
+        <Box flexDirection="column">
+          <Text color="yellow">
+            Executing {screen.current + 1}/{screen.actions.length}...
+          </Text>
+          <Text color="gray">{screen.actions[screen.current]?.package}</Text>
+        </Box>
       )}
 
       {screen.type === 'done' && (
-        <ExecutionResult
-          result={screen.result}
-          onExit={exit}
-        />
+        <Box flexDirection="column">
+          <Box marginBottom={1}>
+            <Text bold color={screen.results.every(r => r.success) ? 'green' : 'yellow'}>
+              {screen.results.every(r => r.success)
+                ? '✓ All actions completed'
+                : `⚠ Completed with ${screen.results.filter(r => !r.success).length} error(s)`}
+            </Text>
+          </Box>
+
+          {screen.results.map((result, i) => (
+            <Box key={i}>
+              <Text color={result.success ? 'green' : 'red'}>
+                {result.success ? '✓' : '✗'} {result.package}: {result.message ?? result.error}
+              </Text>
+            </Box>
+          ))}
+
+          <Box marginTop={1}>
+            <Text color="gray">[Enter] Back to list  [q] Quit</Text>
+          </Box>
+        </Box>
       )}
 
       <Box marginTop={1} borderStyle="single" borderColor="gray" paddingX={1}>
         <Text color="gray">
-          {screen.type === 'list' && 'j/k: navigate • s: sort • o: order • a: action • p: plan • /: filter • q: quit'}
-          {screen.type === 'details' && 'a: add action • Esc: back • q: quit'}
+          {screen.type === 'list' && 'j/k: navigate • Space: select • s: sort • a: action • r: refresh • q: quit'}
+          {screen.type === 'details' && 'a: action • Esc: back'}
           {(screen.type === 'action' || screen.type === 'bulkAction') && 'Enter: confirm • Esc: cancel'}
-          {screen.type === 'plan' && 'Enter: confirm & execute • Esc: back'}
-          {screen.type === 'confirm' && 'Type confirmation to proceed • Esc: cancel'}
-          {screen.type === 'done' && 'Enter/q: exit'}
+          {screen.type === 'confirm' && 'y: execute • Esc: cancel'}
+          {screen.type === 'done' && 'Enter: back to list • q: quit'}
         </Text>
       </Box>
     </Box>

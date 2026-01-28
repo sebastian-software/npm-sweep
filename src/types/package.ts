@@ -18,6 +18,7 @@ export interface DiscoveredPackage {
   lastPublish: Date;
   owners: string[];
   downloadsWeekly?: number;
+  dependentsCount?: number;
   deprecated?: string;
   repository?: {
     type: string;
@@ -99,4 +100,8 @@ export interface DownloadsResponse {
   start: string;
   end: string;
   package: string;
+}
+
+export interface BulkDownloadsResponse {
+  [packageName: string]: DownloadsResponse | null;
 }

@@ -76,6 +76,17 @@ export async function* searchAllPackages(
   }
 }
 
+export interface PackageSearchMeta {
+  name: string;
+  version: string;
+  description?: string;
+  date: string;
+  downloadsWeekly: number;
+  downloadsMonthly: number;
+  dependents: number;
+  maintainers: Array<{ username: string; email?: string }>;
+}
+
 export async function findPackagesByMaintainer(
   client: RegistryClient,
   username: string
@@ -84,6 +95,32 @@ export async function findPackagesByMaintainer(
 
   for await (const result of searchAllPackages(client, { maintainer: username })) {
     packages.push(result.package.name);
+  }
+
+  return packages;
+}
+
+export async function findPackagesWithMetadata(
+  client: RegistryClient,
+  username: string
+): Promise<PackageSearchMeta[]> {
+  const packages: PackageSearchMeta[] = [];
+
+  for await (const result of searchAllPackages(client, { maintainer: username })) {
+    const obj = result as Record<string, unknown>;
+    const downloads = obj.downloads as { weekly?: number; monthly?: number } | undefined;
+    const dependents = obj.dependents as string | number | undefined;
+
+    packages.push({
+      name: result.package.name,
+      version: result.package.version,
+      description: result.package.description,
+      date: result.package.date,
+      downloadsWeekly: downloads?.weekly ?? 0,
+      downloadsMonthly: downloads?.monthly ?? 0,
+      dependents: typeof dependents === 'string' ? parseInt(dependents, 10) || 0 : dependents ?? 0,
+      maintainers: result.package.maintainers ?? [],
+    });
   }
 
   return packages;

@@ -4,9 +4,8 @@ import ora from 'ora';
 import type { Command } from 'commander';
 import { RegistryClient } from '../registry/client.js';
 import { whoami } from '../registry/auth.js';
-import { findPackagesByMaintainer } from '../registry/search.js';
+import { findPackagesWithMetadata } from '../registry/search.js';
 import { getPackument, packumentToDiscovered } from '../registry/packument.js';
-import { getBulkDownloads } from '../registry/downloads.js';
 import { App } from '../tui/App.js';
 import { logger } from '../utils/logger.js';
 
@@ -37,22 +36,25 @@ export async function tuiCommand(
 
     spinner.text = `Searching packages for ${username}...`;
 
-    const packageNames = await findPackagesByMaintainer(client, username);
+    const searchResults = await findPackagesWithMetadata(client, username);
 
-    if (packageNames.length === 0) {
+    if (searchResults.length === 0) {
       spinner.succeed(`No packages found for ${username}`);
       return;
     }
 
-    spinner.text = `Found ${packageNames.length} packages, fetching details...`;
+    spinner.text = `Found ${searchResults.length} packages, fetching details...`;
+
+    // Build a lookup for search metadata (downloads, dependents)
+    const metaByName = new Map(searchResults.map(m => [m.name, m]));
 
     const packages = await Promise.all(
-      packageNames.map(async (name) => {
+      searchResults.map(async (meta) => {
         try {
-          const packument = await getPackument(client, name);
+          const packument = await getPackument(client, meta.name);
           return packumentToDiscovered(packument);
         } catch (error) {
-          logger.debug(`Failed to fetch ${name}: ${String(error)}`);
+          logger.debug(`Failed to fetch ${meta.name}: ${String(error)}`);
           return null;
         }
       })
@@ -60,12 +62,13 @@ export async function tuiCommand(
 
     const validPackages = packages.filter((p) => p !== null);
 
-    spinner.text = 'Fetching download stats...';
-
-    const downloads = await getBulkDownloads(validPackages.map((p) => p.name));
-
+    // Enrich with search metadata
     for (const pkg of validPackages) {
-      pkg.downloadsWeekly = downloads.get(pkg.name) ?? undefined;
+      const meta = metaByName.get(pkg.name);
+      if (meta) {
+        pkg.downloadsWeekly = meta.downloadsWeekly;
+        pkg.dependentsCount = meta.dependents;
+      }
     }
 
     let filteredPackages = validPackages;

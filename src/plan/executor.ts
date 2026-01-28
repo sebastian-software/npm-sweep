@@ -1,4 +1,5 @@
-import type { Plan, PackageResult, StepResult, PlanExecutionResult, Step } from '../types/plan.js';
+import type { Plan, PackageAction, PackageResult, StepResult, PlanExecutionResult, Step } from '../types/plan.js';
+import type { ActionResult } from '../types/action.js';
 import type { RegistryClient } from '../registry/client.js';
 import { OtpRequiredError } from '../registry/client.js';
 import { deprecate, undeprecate } from '../actions/deprecate.js';
@@ -288,4 +289,48 @@ export function formatExecutionResult(result: PlanExecutionResult): string {
   }
 
   return lines.join('\n');
+}
+
+let cachedOtp: string | undefined;
+
+export async function executeAction(
+  client: RegistryClient,
+  action: PackageAction,
+  enableUnpublish: boolean
+): Promise<ActionResult> {
+  const step = action.steps[0];
+  if (!step) {
+    return {
+      success: false,
+      action: 'deprecate', // fallback type
+      package: action.package,
+      error: 'No step defined',
+    };
+  }
+
+  try {
+    const result = await executeStepWithOtpRetry(
+      client,
+      action.package,
+      step,
+      enableUnpublish,
+      () => cachedOtp,
+      (otp) => { cachedOtp = otp; }
+    );
+
+    return {
+      success: result.status === 'success',
+      action: step.type,
+      package: action.package,
+      message: result.message,
+      error: result.error,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      action: step.type,
+      package: action.package,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
