@@ -19,11 +19,16 @@ export async function unpublish(
       const eligibility = await checkUnpublishEligibility(client, discovered);
 
       if (!eligibility.eligible) {
+        const failedDetails = Object.entries(eligibility.checks)
+          .filter(([_, check]) => !check.passed)
+          .map(([name, check]) => `${name}: ${check.description}`)
+          .join('; ');
+
         return {
           success: false,
           action: 'unpublish',
           package: packageName,
-          error: `Not eligible for unpublish: ${eligibility.reason}`,
+          error: `Not eligible: ${failedDetails}`,
           details: { eligibility },
         };
       }
