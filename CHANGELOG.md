@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/sebastian-software/npm-sweep/compare/npm-sweep-v0.1.1...npm-sweep-v0.1.2) (2026-01-28)
+
+
+### Bug Fixes
+
+* resolve all eslint errors ([034d1f8](https://github.com/sebastian-software/npm-sweep/commit/034d1f8d28b6939423de911f173ac8fb2a220ad6))
+
 ## [0.1.1](https://github.com/sebastian-software/npm-sweep/compare/npm-sweep-v0.1.0...npm-sweep-v0.1.1) (2026-01-28)
 
 
