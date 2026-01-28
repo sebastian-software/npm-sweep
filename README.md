@@ -19,12 +19,14 @@ Maintainers accumulate packages over the years — experiments, old utilities, s
 
 ## Features
 
-- **Interactive TUI** — Browse your packages, filter, multi-select
-- **Action catalog** — Deprecate, unpublish, tombstone, transfer ownership, archive repo
+- **Interactive TUI** — Browse your packages with downloads, dependents, and status
+- **Multi-select & bulk actions** — Select multiple packages and apply actions at once
+- **Action catalog** — Deprecate, unpublish, tombstone, transfer ownership
 - **Impact explanations** — Understand consequences before applying
-- **Plan workflow** — Generate a plan, review it, apply later
-- **Safety first** — Dry-run mode, confirmation prompts, policy checks
-- **2FA support** — OTP prompts and 1Password integration
+- **Direct execution** — Select, confirm, execute, back to list
+- **Safety first** — Confirmation prompts, policy checks, eligibility validation
+- **2FA support** — Automatic OTP via 1Password CLI or manual input
+- **Live refresh** — Reload package data without restarting
 
 ## Installation
 
@@ -37,14 +39,36 @@ Requires Node.js 20 or later.
 ## Quick Start
 
 ```bash
-# Start interactive TUI
-npm-sweep tui
+# Start interactive TUI (default command)
+npm-sweep
 
-# Or scan your packages first
+# Or scan your packages as a table
 npm-sweep scan
 ```
 
 ## Commands
+
+### `npm-sweep` / `npm-sweep tui`
+
+Start the interactive terminal UI. This is the default command.
+
+```bash
+npm-sweep                         # Start TUI
+npm-sweep --enable-unpublish      # Enable unpublish action (disabled by default)
+npm-sweep --1password-item npmjs  # Auto-fetch OTP from 1Password
+npm-sweep --user other-user       # Browse another user's packages
+```
+
+**Keyboard shortcuts:**
+- `j/k` or arrows — Navigate
+- `Space` — Toggle selection
+- `Enter` — View package details
+- `a` — Choose action for selected package(s)
+- `s` — Cycle sort column (name, date, downloads, dependents)
+- `o` — Toggle sort order
+- `r` — Refresh package list from registry
+- `/` — Filter by name
+- `q` — Quit
 
 ### `npm-sweep scan`
 
@@ -58,41 +82,6 @@ npm-sweep scan --json             # Output as JSON
 npm-sweep scan --include-deprecated
 ```
 
-### `npm-sweep tui`
-
-Start the interactive terminal UI.
-
-```bash
-npm-sweep tui
-npm-sweep tui --enable-unpublish  # Enable unpublish action (disabled by default)
-```
-
-**Keyboard shortcuts:**
-- `j/k` or arrows — Navigate
-- `Space` — Toggle selection
-- `Enter` — View details
-- `a` — Add action to plan
-- `p` — View current plan
-- `q` — Quit
-
-### `npm-sweep plan`
-
-Generate an execution plan without the TUI.
-
-```bash
-npm-sweep plan --out plan.json --packages pkg1,pkg2 --action deprecate --message "No longer maintained"
-```
-
-### `npm-sweep apply`
-
-Apply a previously generated plan.
-
-```bash
-npm-sweep apply --in plan.json              # Apply with confirmation
-npm-sweep apply --in plan.json --dry-run    # Preview without changes
-npm-sweep apply --in plan.json --yes        # Skip confirmation (CI)
-```
-
 ## Actions
 
 ### Deprecate
@@ -100,7 +89,7 @@ npm-sweep apply --in plan.json --yes        # Skip confirmation (CI)
 Mark packages as deprecated. Users see a warning on install.
 
 ```
-⚠ npm warn deprecated my-package@1.0.0: This package is no longer maintained.
+npm warn deprecated my-package@1.0.0: This package is no longer maintained.
 ```
 
 - **Reversible:** Yes (undeprecate)
@@ -108,7 +97,7 @@ Mark packages as deprecated. Users see a warning on install.
 
 ### Unpublish
 
-Remove packages from the registry permanently.
+Remove packages from the registry permanently. Disabled by default, enable with `--enable-unpublish`.
 
 - **Reversible:** No
 - **Restrictions:**
@@ -116,7 +105,7 @@ Remove packages from the registry permanently.
   - After 72h: Only if <300 downloads/week, single owner, no dependents
 - **Impact:** Critical — breaks dependent projects
 
-npm-sweep checks eligibility automatically and disables unpublish when policy doesn't allow it.
+npm-sweep checks eligibility automatically and shows why a package can or cannot be unpublished.
 
 ### Tombstone Release
 
@@ -137,30 +126,10 @@ Add or remove maintainers. Transfer to `npm` to fully hand off a package.
 ## Global Options
 
 ```bash
---registry <url>     # Custom registry (default: https://registry.npmjs.org)
---otp <code>         # One-time password for 2FA
---1password-item <n> # 1Password item name for OTP
---debug              # Enable debug output
-```
-
-## Plan File Format
-
-Plans are JSON files that can be reviewed before applying:
-
-```json
-{
-  "version": 1,
-  "generatedAt": "2025-01-28T10:00:00Z",
-  "actor": "your-username",
-  "actions": [
-    {
-      "package": "old-tool",
-      "steps": [
-        { "type": "deprecate", "range": "*", "message": "Use new-tool instead" }
-      ]
-    }
-  ]
-}
+--registry <url>         # Custom registry (default: https://registry.npmjs.org)
+--otp <code>             # One-time password for 2FA
+--1password-item <name>  # 1Password item name for automatic OTP
+--debug                  # Enable debug output
 ```
 
 ## Programmatic Usage
@@ -187,7 +156,7 @@ if (eligibility.eligible) {
 ## Security
 
 - **No token storage** — Uses existing `npm login` session or `NPM_TOKEN` env var
-- **OTP support** — Prompts for 2FA when required
+- **OTP support** — Automatic via 1Password CLI or manual prompt
 - **Redacted logs** — Tokens and emails are never logged
 
 ## Contributing
