@@ -128,13 +128,11 @@ export function PackageList({
 
       <Box flexDirection="column">
         <Box>
-          <Text color="gray">
-            {'   '}
-            {'NAME'.padEnd(35)}
-            {'LAST PUBLISH'.padEnd(15)}
-            {'DL/WK'.padEnd(10)}
-            {'STATUS'}
-          </Text>
+          <Box width={3}><Text color="gray"> </Text></Box>
+          <Box width={36}><Text color="gray">NAME</Text></Box>
+          <Box width={15}><Text color="gray">LAST PUBLISH</Text></Box>
+          <Box width={10}><Text color="gray">DL/WK</Text></Box>
+          <Box width={12}><Text color="gray">STATUS</Text></Box>
         </Box>
 
         {visiblePackages.map((pkg, index) => {
@@ -143,26 +141,36 @@ export function PackageList({
           const isSelected = selectedPackages.has(pkg.name);
           const isPlanned = plannedPackages.has(pkg.name);
 
+          const status = pkg.deprecated ? 'deprecated' : isPlanned ? 'planned' : 'active';
+          const statusColor = pkg.deprecated ? 'yellow' : isPlanned ? 'magenta' : 'green';
+
           return (
-            <Box key={pkg.name}>
-              <Text
-                backgroundColor={isCursor ? 'blue' : undefined}
-                color={isCursor ? 'white' : undefined}
-              >
-                {isSelected ? '●' : '○'}{' '}
-                <Text color={isPlanned ? 'magenta' : pkg.deprecated ? 'yellow' : undefined}>
-                  {pkg.name.padEnd(35).slice(0, 35)}
+            <Box key={pkg.name} backgroundColor={isCursor ? 'blue' : undefined}>
+              <Box width={3}>
+                <Text color={isCursor ? 'white' : undefined}>
+                  {isSelected ? '●' : '○'}{' '}
                 </Text>
-                <Text color="gray">{formatRelativeDate(pkg.lastPublish).padEnd(15)}</Text>
-                <Text color="gray">
-                  {(pkg.downloadsWeekly !== undefined
-                    ? formatDownloads(pkg.downloadsWeekly)
-                    : '-'
-                  ).padEnd(10)}
+              </Box>
+              <Box width={36}>
+                <Text
+                  color={isCursor ? 'white' : isPlanned ? 'magenta' : pkg.deprecated ? 'yellow' : 'cyan'}
+                >
+                  {pkg.name.slice(0, 35)}
                 </Text>
-                {pkg.deprecated && <Text color="yellow">deprecated</Text>}
-                {isPlanned && <Text color="magenta">planned</Text>}
-              </Text>
+              </Box>
+              <Box width={15}>
+                <Text color={isCursor ? 'white' : 'gray'}>
+                  {formatRelativeDate(pkg.lastPublish)}
+                </Text>
+              </Box>
+              <Box width={10}>
+                <Text color={isCursor ? 'white' : 'gray'}>
+                  {pkg.downloadsWeekly !== undefined ? formatDownloads(pkg.downloadsWeekly) : '-'}
+                </Text>
+              </Box>
+              <Box width={12}>
+                <Text color={isCursor ? 'white' : statusColor}>{status}</Text>
+              </Box>
             </Box>
           );
         })}
