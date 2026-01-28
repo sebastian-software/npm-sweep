@@ -1,6 +1,6 @@
 {
   "name": "npm-sweep",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Interactive tool for managing end-of-life of your npm packages",
   "type": "module",
   "main": "dist/index.js",
