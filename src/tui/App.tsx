@@ -183,6 +183,7 @@ export function App({ client, packages, username, enableUnpublish = false }: App
       {screen.type === 'bulkAction' && (
         <BulkActionSelector
           packages={screen.packages}
+          enableUnpublish={enableUnpublish}
           onAddActions={handleAddBulkActions}
           onCancel={handleBack}
         />

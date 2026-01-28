@@ -7,40 +7,31 @@ import { ACTION_IMPACTS } from '../types/action.js';
 import {
   createDeprecateAction,
   createTombstoneAction,
+  createUnpublishAction,
 } from '../plan/generator.js';
 import { getNextMajor } from '../actions/semver.js';
 
-type BulkActionType = 'deprecate' | 'tombstone';
+type BulkActionType = 'deprecate' | 'tombstone' | 'unpublish';
 
 interface ActionOption {
   type: BulkActionType;
   label: string;
   description: string;
+  destructive?: boolean;
 }
 
 export interface BulkActionSelectorProps {
   packages: DiscoveredPackage[];
+  enableUnpublish: boolean;
   onAddActions: (actions: PackageAction[]) => void;
   onCancel: () => void;
 }
 
 type Stage = 'select' | 'configure';
 
-const BULK_ACTIONS: ActionOption[] = [
-  {
-    type: 'deprecate',
-    label: 'Deprecate All',
-    description: 'Mark all selected packages as deprecated',
-  },
-  {
-    type: 'tombstone',
-    label: 'Tombstone All',
-    description: 'Publish tombstone releases for all selected packages',
-  },
-];
-
 export function BulkActionSelector({
   packages,
+  enableUnpublish,
   onAddActions,
   onCancel,
 }: BulkActionSelectorProps) {
@@ -51,19 +42,49 @@ export function BulkActionSelector({
     'This package is no longer maintained. Please consider alternatives.'
   );
 
+  const actions: ActionOption[] = [
+    {
+      type: 'deprecate',
+      label: 'Deprecate All',
+      description: 'Mark all selected packages as deprecated',
+    },
+    {
+      type: 'tombstone',
+      label: 'Tombstone All',
+      description: 'Publish tombstone releases for all selected packages',
+      destructive: true,
+    },
+    ...(enableUnpublish
+      ? [
+          {
+            type: 'unpublish' as const,
+            label: 'Unpublish All',
+            description: 'Permanently remove all selected packages from npm',
+            destructive: true,
+          },
+        ]
+      : []),
+  ];
+
   useInput((input, key) => {
     if (stage === 'select') {
       if (key.escape) {
         onCancel();
       } else if (input === 'j' || key.downArrow) {
-        setCursor((prev) => Math.min(prev + 1, BULK_ACTIONS.length - 1));
+        setCursor((prev) => Math.min(prev + 1, actions.length - 1));
       } else if (input === 'k' || key.upArrow) {
         setCursor((prev) => Math.max(prev - 1, 0));
       } else if (key.return) {
-        const action = BULK_ACTIONS[cursor];
+        const action = actions[cursor];
         if (action) {
-          setSelectedAction(action.type);
-          setStage('configure');
+          if (action.type === 'unpublish') {
+            // Unpublish doesn't need message configuration
+            setSelectedAction(action.type);
+            handleUnpublishConfirm();
+          } else {
+            setSelectedAction(action.type);
+            setStage('configure');
+          }
         }
       }
     } else if (stage === 'configure') {
@@ -76,19 +97,28 @@ export function BulkActionSelector({
     }
   });
 
+  const handleUnpublishConfirm = () => {
+    const packageActions: PackageAction[] = packages.map((pkg) =>
+      createUnpublishAction(pkg.name, undefined, true)
+    );
+    onAddActions(packageActions);
+  };
+
   const handleConfirm = () => {
     if (!selectedAction) return;
 
-    const actions: PackageAction[] = packages.map((pkg) => {
+    const packageActions: PackageAction[] = packages.map((pkg) => {
       switch (selectedAction) {
         case 'deprecate':
           return createDeprecateAction(pkg.name, '*', message);
         case 'tombstone':
           return createTombstoneAction(pkg.name, getNextMajor(pkg.latestVersion), message);
+        case 'unpublish':
+          return createUnpublishAction(pkg.name, undefined, true);
       }
     });
 
-    onAddActions(actions);
+    onAddActions(packageActions);
   };
 
   if (stage === 'select') {
@@ -101,7 +131,12 @@ export function BulkActionSelector({
 
         <Box marginBottom={1} flexDirection="column">
           {packages.slice(0, 5).map((pkg) => (
-            <Text key={pkg.name} color="gray">• {pkg.name}</Text>
+            <Box key={pkg.name}>
+              <Text color="gray">• {pkg.name}</Text>
+              {pkg.downloadsWeekly !== undefined && (
+                <Text color="gray"> ({pkg.downloadsWeekly} DL/wk)</Text>
+              )}
+            </Box>
           ))}
           {packages.length > 5 && (
             <Text color="gray">  ...and {packages.length - 5} more</Text>
@@ -109,7 +144,7 @@ export function BulkActionSelector({
         </Box>
 
         <Box flexDirection="column">
-          {BULK_ACTIONS.map((action, index) => {
+          {actions.map((action, index) => {
             const isCursor = index === cursor;
             const impact = ACTION_IMPACTS[action.type];
 
@@ -119,14 +154,17 @@ export function BulkActionSelector({
                   <Text color={isCursor ? 'cyan' : 'gray'}>{isCursor ? '›' : ' '}</Text>
                 </Box>
                 <Box width={20}>
-                  <Text bold={isCursor} color={isCursor ? 'white' : undefined}>
+                  <Text
+                    bold={isCursor}
+                    color={action.destructive ? 'red' : isCursor ? 'white' : undefined}
+                  >
                     {action.label}
                   </Text>
                 </Box>
                 <Box>
                   {isCursor && (
                     <Text color={impact?.reversible ? 'green' : 'yellow'}>
-                      {impact?.reversible ? '↩ reversible' : '⚠ irreversible'}
+                      {impact?.reversible ? '↩ reversible' : '⚠ IRREVERSIBLE'}
                     </Text>
                   )}
                 </Box>
@@ -135,9 +173,17 @@ export function BulkActionSelector({
           })}
         </Box>
 
-        {BULK_ACTIONS[cursor] && (
+        {actions[cursor] && (
           <Box marginTop={1}>
-            <Text color="gray">{BULK_ACTIONS[cursor]!.description}</Text>
+            <Text color="gray">{actions[cursor]!.description}</Text>
+          </Box>
+        )}
+
+        {actions[cursor]?.type === 'unpublish' && (
+          <Box marginTop={1}>
+            <Text color="red" bold>
+              Warning: This will permanently delete {packages.length} packages!
+            </Text>
           </Box>
         )}
       </Box>
