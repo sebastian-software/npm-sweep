@@ -186,7 +186,7 @@ export function App({ client, packages, username, enableUnpublish = false }: App
 
       <Box marginTop={1} borderStyle="single" borderColor="gray" paddingX={1}>
         <Text color="gray">
-          {screen.type === 'list' && 'j/k: navigate • Space: select • Enter: details • a: action • p: view plan • q: quit'}
+          {screen.type === 'list' && 'j/k: navigate • s: sort • o: order • a: action • p: plan • /: filter • q: quit'}
           {screen.type === 'details' && 'a: add action • Esc: back • q: quit'}
           {screen.type === 'action' && 'Enter: confirm • Esc: cancel'}
           {screen.type === 'plan' && 'Enter: confirm & execute • Esc: back'}
