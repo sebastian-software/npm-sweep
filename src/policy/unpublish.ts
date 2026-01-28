@@ -1,7 +1,6 @@
 import type { DiscoveredPackage, UnpublishEligibility } from '../types/index.js';
 import { getWeeklyDownloads } from '../registry/downloads.js';
 import type { RegistryClient } from '../registry/client.js';
-import { searchPackages } from '../registry/search.js';
 
 const UNPUBLISH_DOWNLOAD_THRESHOLD = 300;
 const UNPUBLISH_HOURS_THRESHOLD = 72;
@@ -61,11 +60,11 @@ export async function checkUnpublishEligibility(
 
   const hasDependents = await checkForDependents(client, pkg.name);
   checks.hasDependents = {
-    passed: hasDependents === false,
+    passed: hasDependents !== true, // Pass if false or unknown
     value: hasDependents,
     description:
       hasDependents === 'unknown'
-        ? 'Could not determine if package has dependents'
+        ? 'Cannot check dependents (npm will verify at unpublish time)'
         : hasDependents
           ? 'Package has dependents that would break'
           : 'No known dependents',
@@ -94,18 +93,13 @@ export async function checkUnpublishEligibility(
 }
 
 async function checkForDependents(
-  client: RegistryClient,
-  packageName: string
+  _client: RegistryClient,
+  _packageName: string
 ): Promise<boolean | 'unknown'> {
-  try {
-    const result = await searchPackages(client, {
-      text: `dependencies:${packageName}`,
-      size: 1,
-    });
-    return result.total > 0;
-  } catch {
-    return 'unknown';
-  }
+  // npm doesn't have a public API for dependents
+  // The search API `dependencies:name` gives false positives
+  // Skip this check - npm will reject at publish time if there are real dependents
+  return 'unknown';
 }
 
 export function formatEligibilityReport(eligibility: UnpublishEligibility): string {
