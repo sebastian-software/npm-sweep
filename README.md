@@ -7,6 +7,8 @@
 
 Interactive CLI tool for managing end-of-life of your npm packages. Like `npm-check-updates` but for sunsetting packages.
 
+![npm-sweep TUI](docs/screenshot.png)
+
 ## Why?
 
 Maintainers accumulate packages over the years — experiments, old utilities, superseded libraries. "Just delete it" feels liberating but npm's ecosystem has rules and consequences:
@@ -34,7 +36,7 @@ Maintainers accumulate packages over the years — experiments, old utilities, s
 npm install -g npm-sweep
 ```
 
-Requires Node.js 20 or later.
+Requires Node.js >20.
 
 ## Quick Start
 
