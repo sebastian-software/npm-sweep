@@ -1,6 +1,7 @@
 import { createGzip } from 'node:zlib';
 import * as tar from './tar.js';
 import type { RegistryClient } from '../registry/client.js';
+import { OtpRequiredError } from '../registry/client.js';
 import { getPackument } from '../registry/packument.js';
 import { publishPackage } from '../registry/tarball.js';
 import type { PublishManifest } from '../registry/tarball.js';
@@ -131,6 +132,9 @@ export async function createTombstone(
       },
     };
   } catch (error) {
+    if (error instanceof OtpRequiredError) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,

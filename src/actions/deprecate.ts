@@ -1,4 +1,5 @@
 import type { RegistryClient } from '../registry/client.js';
+import { OtpRequiredError } from '../registry/client.js';
 import { getPackument, updatePackument } from '../registry/packument.js';
 import type { ActionResult, DeprecateOptions, UndeprecateOptions } from '../types/action.js';
 import { logger } from '../utils/logger.js';
@@ -57,6 +58,9 @@ export async function deprecate(
       details: { versionsUpdated, range, deprecationMessage: message },
     };
   } catch (error) {
+    if (error instanceof OtpRequiredError) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,
@@ -120,6 +124,9 @@ export async function undeprecate(
       details: { versionsUpdated, range },
     };
   } catch (error) {
+    if (error instanceof OtpRequiredError) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,

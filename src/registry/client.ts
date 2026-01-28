@@ -138,12 +138,27 @@ export class RegistryClient {
           parsed = body;
         }
 
-        if (response.statusCode === 401) {
+        if (response.statusCode === 401 || response.statusCode === 403) {
+          // Check various ways npm indicates OTP is required
           const otpHeader = response.headers['www-authenticate'];
-          if (typeof otpHeader === 'string' && otpHeader.includes('otp')) {
+          const npmNotice = response.headers['npm-notice'];
+          const bodyStr = typeof parsed === 'object' && parsed !== null
+            ? JSON.stringify(parsed).toLowerCase()
+            : String(parsed).toLowerCase();
+
+          logger.debug(`Auth error - status: ${response.statusCode}, www-authenticate: ${otpHeader}, npm-notice: ${npmNotice}, body: ${bodyStr.substring(0, 200)}`);
+
+          const needsOtp =
+            (typeof otpHeader === 'string' && otpHeader.toLowerCase().includes('otp')) ||
+            (typeof npmNotice === 'string' && npmNotice.toLowerCase().includes('otp')) ||
+            bodyStr.includes('otp') ||
+            bodyStr.includes('one-time pass') ||
+            bodyStr.includes('eotp');
+
+          if (needsOtp) {
             throw new OtpRequiredError();
           }
-          throw new RegistryError('Unauthorized', 401, parsed);
+          throw new RegistryError('Unauthorized', response.statusCode, parsed);
         }
 
         if (response.statusCode === 429) {
@@ -155,11 +170,21 @@ export class RegistryClient {
         }
 
         if (response.statusCode >= 400) {
-          throw new RegistryError(
-            `Request failed with status ${response.statusCode}`,
-            response.statusCode,
-            parsed
-          );
+          // Extract error message from npm response
+          let errorMessage = `Request failed with status ${response.statusCode}`;
+          if (typeof parsed === 'object' && parsed !== null) {
+            const npmError = parsed as Record<string, unknown>;
+            if (typeof npmError.error === 'string') {
+              errorMessage = npmError.error;
+            } else if (typeof npmError.message === 'string') {
+              errorMessage = npmError.message;
+            } else if (typeof npmError.reason === 'string') {
+              errorMessage = npmError.reason;
+            }
+          } else if (typeof parsed === 'string' && parsed.length > 0 && parsed.length < 500) {
+            errorMessage = parsed;
+          }
+          throw new RegistryError(errorMessage, response.statusCode, parsed);
         }
 
         return parsed as T;

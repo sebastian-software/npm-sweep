@@ -1,4 +1,5 @@
 import type { RegistryClient } from '../registry/client.js';
+import { OtpRequiredError } from '../registry/client.js';
 import { unpublishPackage, unpublishVersion } from '../registry/tarball.js';
 import { getPackument, packumentToDiscovered } from '../registry/packument.js';
 import { checkUnpublishEligibility } from '../policy/unpublish.js';
@@ -69,6 +70,10 @@ export async function unpublish(
       details: { force: true },
     };
   } catch (error) {
+    // Re-throw OTP errors so they can be handled by retry logic
+    if (error instanceof OtpRequiredError) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,

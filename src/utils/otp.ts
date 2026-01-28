@@ -10,6 +10,11 @@ let config: OtpConfig = {};
 
 export function configureOtp(options: OtpConfig): void {
   config = { ...config, ...options };
+
+  // Validate 1Password setup immediately if configured
+  if (options.onePasswordItem) {
+    validateOnePasswordSetup(options.onePasswordItem);
+  }
 }
 
 function isOnePasswordAvailable(): boolean {
@@ -21,15 +26,41 @@ function isOnePasswordAvailable(): boolean {
   }
 }
 
+function validateOnePasswordSetup(itemName: string): void {
+  if (!isOnePasswordAvailable()) {
+    throw new Error(
+      '1Password CLI (op) is not installed or not in PATH.\n' +
+      'Install it from: https://1password.com/downloads/command-line/'
+    );
+  }
+
+  // Test that we can access the item
+  try {
+    execSync(`op item get "${itemName}" --otp`, {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    logger.info(`1Password: Successfully connected to item "${itemName}"`);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `1Password: Cannot get OTP from item "${itemName}".\n` +
+      `Make sure the item exists and has a one-time password configured.\n` +
+      `Error: ${errorMsg}`
+    );
+  }
+}
+
 function getOtpFrom1Password(itemName: string): string | null {
   try {
     const result = execSync(`op item get "${itemName}" --otp`, {
       encoding: 'utf-8',
-      stdio: ['ignore', 'pipe', 'ignore'],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
     return result.trim();
   } catch (error) {
-    logger.debug(`Failed to get OTP from 1Password: ${String(error)}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    logger.error(`Failed to get OTP from 1Password: ${errorMsg}`);
     return null;
   }
 }

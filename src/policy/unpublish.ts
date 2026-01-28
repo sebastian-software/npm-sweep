@@ -42,9 +42,9 @@ export async function checkUnpublishEligibility(
     };
   } else {
     checks.weeklyDownloads = {
-      passed: isRecent,
+      passed: true, // Can't verify, let npm enforce at unpublish time
       value: 'unknown',
-      description: 'Could not determine download count',
+      description: 'Could not determine download count (npm will verify)',
     };
   }
 

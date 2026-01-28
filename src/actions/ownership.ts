@@ -1,4 +1,5 @@
 import type { RegistryClient } from '../registry/client.js';
+import { OtpRequiredError } from '../registry/client.js';
 import { addOwner as addOwnerToRegistry, removeOwner as removeOwnerFromRegistry } from '../registry/owners.js';
 import type { ActionResult, OwnerAddOptions, OwnerRemoveOptions } from '../types/action.js';
 import { logger } from '../utils/logger.js';
@@ -24,6 +25,9 @@ export async function addOwner(
       details: { user },
     };
   } catch (error) {
+    if (error instanceof OtpRequiredError) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,
@@ -55,6 +59,9 @@ export async function removeOwner(
       details: { user },
     };
   } catch (error) {
+    if (error instanceof OtpRequiredError) {
+      throw error;
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       success: false,

@@ -120,7 +120,16 @@ export async function unpublishVersion(
   otp?: string
 ): Promise<void> {
   const encodedName = encodeURIComponent(packageName).replace('%40', '@');
-  await client.fetch(`/${encodedName}/-/${packageName}-${version}.tgz/-rev/1`, {
+
+  // Get the current packument to obtain _rev
+  const packument = await client.fetch<{ _rev: string }>(`/${encodedName}`);
+  const rev = packument._rev;
+
+  if (!rev) {
+    throw new Error('Could not get package revision for unpublish');
+  }
+
+  await client.fetch(`/${encodedName}/-/${packageName}-${version}.tgz/-rev/${rev}`, {
     method: 'DELETE',
     otp,
   });
@@ -132,7 +141,16 @@ export async function unpublishPackage(
   otp?: string
 ): Promise<void> {
   const encodedName = encodeURIComponent(packageName).replace('%40', '@');
-  await client.fetch(`/${encodedName}/-rev/1`, {
+
+  // Get the current packument to obtain _rev
+  const packument = await client.fetch<{ _rev: string }>(`/${encodedName}`);
+  const rev = packument._rev;
+
+  if (!rev) {
+    throw new Error('Could not get package revision for unpublish');
+  }
+
+  await client.fetch(`/${encodedName}/-rev/${rev}`, {
     method: 'DELETE',
     otp,
   });
