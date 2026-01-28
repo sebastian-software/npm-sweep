@@ -124,7 +124,14 @@ export async function scanCommand(
 
   } catch (error) {
     spinner.fail('Failed to scan packages');
-    logger.error(error instanceof Error ? error.message : String(error));
+
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      logger.error('Authentication failed. Please run "npm login" first.');
+      logger.error('Alternatively, set the NPM_TOKEN environment variable.');
+    } else {
+      logger.error(error instanceof Error ? error.message : String(error));
+    }
+
     process.exit(1);
   }
 }

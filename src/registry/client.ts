@@ -1,4 +1,7 @@
 import { request } from 'undici';
+import { readFileSync, existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
 
 export interface RegistryClientOptions {
@@ -45,7 +48,51 @@ export class RegistryClient {
   }
 
   private getTokenFromEnv(): string | undefined {
-    return process.env['NPM_TOKEN'] ?? process.env['NODE_AUTH_TOKEN'];
+    // 1. Check environment variables
+    const envToken = process.env['NPM_TOKEN'] ?? process.env['NODE_AUTH_TOKEN'];
+    if (envToken) {
+      logger.debug('Using token from environment variable');
+      return envToken;
+    }
+
+    // 2. Check .npmrc file
+    const npmrcToken = this.getTokenFromNpmrc();
+    if (npmrcToken) {
+      logger.debug('Using token from .npmrc');
+      return npmrcToken;
+    }
+
+    return undefined;
+  }
+
+  private getTokenFromNpmrc(): string | undefined {
+    const npmrcPaths = [
+      join(process.cwd(), '.npmrc'),
+      join(homedir(), '.npmrc'),
+    ];
+
+    for (const npmrcPath of npmrcPaths) {
+      if (!existsSync(npmrcPath)) {
+        continue;
+      }
+
+      try {
+        const content = readFileSync(npmrcPath, 'utf-8');
+        const lines = content.split('\n');
+
+        for (const line of lines) {
+          // Match: //registry.npmjs.org/:_authToken=xxx
+          const authTokenMatch = line.match(/:_authToken=(.+)$/);
+          if (authTokenMatch) {
+            return authTokenMatch[1]!.trim();
+          }
+        }
+      } catch (error) {
+        logger.debug(`Failed to read ${npmrcPath}: ${String(error)}`);
+      }
+    }
+
+    return undefined;
   }
 
   private buildHeaders(options: RequestOptions = {}): Record<string, string> {
