@@ -180,4 +180,4 @@ npm run build    # Build for production
 
 ## License
 
-[MIT](LICENSE) © [Sebastian Software GmbH](https://sebastian-software.de)
+[MIT](LICENSE) © 2026 [Sebastian Software GmbH](https://sebastian-software.de)
