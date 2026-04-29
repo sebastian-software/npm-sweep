@@ -50,26 +50,26 @@
   },
   "dependencies": {
     "chalk": "^5.4.1",
-    "commander": "^13.1.0",
-    "conf": "^13.1.0",
-    "ink": "^5.1.0",
+    "commander": "^14.0.3",
+    "conf": "^15.1.0",
+    "ink": "^7.0.1",
     "ink-text-input": "^6.0.0",
-    "ora": "^8.2.0",
-    "react": "^18.3.1",
-    "undici": "^7.3.0",
-    "zod": "^3.24.2"
+    "ora": "^9.4.0",
+    "react": "^19.2.5",
+    "undici": "^8.1.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@eslint/js": "^9.19.0",
-    "@types/node": "^22.12.0",
-    "@types/react": "^18.3.18",
-    "eslint": "^9.19.0",
-    "globals": "^15.14.0",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
     "msw": "^2.7.0",
     "prettier": "^3.4.2",
     "tsup": "^8.3.6",
-    "typescript": "^5.7.3",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.22.0",
-    "vitest": "^3.0.4"
+    "vitest": "^4.1.5"
   }
 }
