@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/npm-sweep.svg)](https://www.npmjs.com/package/npm-sweep)
 [![CI](https://github.com/sebastian-software/npm-sweep/actions/workflows/ci.yml/badge.svg)](https://github.com/sebastian-software/npm-sweep/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/node/v/npm-sweep.svg)](https://nodejs.org)
+[![Node.js test matrix 22, 24, and 26](https://img.shields.io/badge/Node.js-22%20%7C%2024%20%7C%2026-339933?logo=nodedotjs&logoColor=white)](https://github.com/sebastian-software/npm-sweep/actions/workflows/ci.yml)
 
 Interactive CLI tool for managing end-of-life of your npm packages. Like `npm-check-updates` but for sunsetting packages.
 
